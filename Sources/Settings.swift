@@ -10,6 +10,8 @@ struct RainSettings: Equatable {
     var bounce = 0.5
     var lightning = true
     var collide = true
+    /// Rebotar también en los laterales (se nota con viento).
+    var sideCollide = true
     var sound = true
     /// De 0 a 1.
     var volume = 0.5
@@ -26,6 +28,7 @@ enum SettingsStore {
         static let bounce = "bounce"
         static let lightning = "lightning"
         static let collide = "collide"
+        static let sideCollide = "sideCollide"
         static let sound = "sound"
         static let volume = "volume"
     }
@@ -38,6 +41,7 @@ enum SettingsStore {
         s.bounce = clamp(defaults.object(forKey: Key.bounce) as? Double ?? s.bounce, 0, 1)
         s.lightning = defaults.object(forKey: Key.lightning) as? Bool ?? s.lightning
         s.collide = defaults.object(forKey: Key.collide) as? Bool ?? s.collide
+        s.sideCollide = defaults.object(forKey: Key.sideCollide) as? Bool ?? s.sideCollide
         s.sound = defaults.object(forKey: Key.sound) as? Bool ?? s.sound
         s.volume = clamp(defaults.object(forKey: Key.volume) as? Double ?? s.volume, 0, 1)
         return s
@@ -50,6 +54,7 @@ enum SettingsStore {
         defaults.set(s.bounce, forKey: Key.bounce)
         defaults.set(s.lightning, forKey: Key.lightning)
         defaults.set(s.collide, forKey: Key.collide)
+        defaults.set(s.sideCollide, forKey: Key.sideCollide)
         defaults.set(s.sound, forKey: Key.sound)
         defaults.set(s.volume, forKey: Key.volume)
     }

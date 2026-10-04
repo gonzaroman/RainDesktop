@@ -76,6 +76,7 @@ final class RainView: NSView {
         sim.wind = CGFloat(settings.wind)
         sim.bounce = CGFloat(settings.bounce)
         sim.collide = settings.collide
+        sim.sideCollide = settings.collide && settings.sideCollide
         sim.lightning = lightning
     }
 
@@ -183,8 +184,9 @@ final class RainView: NSView {
         for s in sim.splashes {
             let t = s.age / RainSimulation.splashDuration
             let rx = 2 + t * 7
-            add(.ring, CGPoint(x: s.x, y: s.y + rx * 0.23), CGPoint(x: rx, y: rx * 0.35),
-                width: 0.9, alpha: 0.45 * (1 - t), depth: depth(s.window))
+            let center = s.vertical ? CGPoint(x: s.x, y: s.y) : CGPoint(x: s.x, y: s.y + rx * 0.23)
+            let radii = s.vertical ? CGPoint(x: rx * 0.35, y: rx) : CGPoint(x: rx, y: rx * 0.35)
+            add(.ring, center, radii, width: 0.9, alpha: 0.45 * (1 - t), depth: depth(s.window))
         }
 
         for d in sim.droplets {

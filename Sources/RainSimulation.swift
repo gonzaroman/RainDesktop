@@ -67,6 +67,8 @@ final class RainSimulation {
         var x, y: CGFloat
         var window: UInt32?
         var age: CGFloat
+        /// Salpicadura contra un lateral: el anillo se dibuja en vertical.
+        var vertical = false
     }
 
     static let gravity: CGFloat = 1800
@@ -93,6 +95,8 @@ final class RainSimulation {
     /// De 0 (suave) a 1 (fuerte).
     var bounce: CGFloat = 0.5
     var collide = true
+    /// Las gotas que el viento empuja contra un lateral también rebotan.
+    var sideCollide = false
     var lightning = true { didSet { if !lightning { flash = 0 } } }
 
     private(set) var windows: [Obstacle] = []
@@ -243,7 +247,8 @@ final class RainSimulation {
             let next = CGPoint(x: d.x + d.vx * dt, y: d.y + d.vy * dt)
 
             if collide && d.near, let hit = firstHit(from: CGPoint(x: d.x, y: d.y), to: next) {
-                impact(at: hit.point, normal: hit.normal, window: hit.window, velocity: CGVector(dx: d.vx, dy: d.vy))
+                impact(at: hit.point, normal: hit.normal, window: hit.window, edge: hit.edge,
+                       velocity: CGVector(dx: d.vx, dy: d.vy))
                 drops[i] = makeDrop(anywhere: false)
                 continue
             }
@@ -262,38 +267,73 @@ final class RainSimulation {
         }
     }
 
-    /// Primer borde superior que cruza el segmento p→q (el más alto, porque la gota cae).
-    private func firstHit(from p: CGPoint, to q: CGPoint) -> (point: CGPoint, normal: CGVector, window: UInt32)? {
-        var best: (point: CGPoint, normal: CGVector, window: UInt32)?
+    private typealias Hit = (point: CGPoint, normal: CGVector, window: UInt32, edge: Edge)
+
+    /// Primer borde que cruza el segmento p→q: el superior y, si está activado, los laterales.
+    private func firstHit(from p: CGPoint, to q: CGPoint) -> Hit? {
+        var best: Hit?
+        var bestT = CGFloat.infinity
+        func consider(_ t: CGFloat, _ hit: Hit) {
+            if t < bestT { bestT = t; best = hit }
+        }
         for w in windows {
             let f = w.frame
-            guard q.x >= f.minX, q.x <= f.maxX, q.y <= f.maxY, p.y >= f.minY,
-                  let s = Surface.top(of: f, at: q.x), q.y < s.y else { continue }
-            let before = Surface.top(of: f, at: p.x)?.y ?? s.y
-            guard p.y >= before - 0.5 else { continue }
-            if best == nil || s.y > best!.point.y {
-                best = (CGPoint(x: q.x, y: s.y), s.normal, w.id)
+            guard max(p.y, q.y) >= f.minY, min(p.y, q.y) <= f.maxY + 1 else { continue }
+
+            // Borde superior (con las esquinas redondeadas).
+            if q.x >= f.minX, q.x <= f.maxX, let s = Surface.top(of: f, at: q.x), q.y < s.y {
+                let before = Surface.top(of: f, at: p.x)?.y ?? s.y
+                if p.y >= before - 0.5 {
+                    let t = p.y > q.y ? (p.y - s.y) / (p.y - q.y) : 0
+                    consider(t, (CGPoint(x: q.x, y: s.y), s.normal, w.id, .top))
+                }
+            }
+
+            // Laterales: solo la parte recta, por debajo de la esquina redondeada.
+            guard sideCollide, p.x != q.x else { continue }
+            let r = Surface.radius(of: f)
+            let edges: [(x: CGFloat, crosses: Bool, normal: CGVector, edge: Edge)] = [
+                (f.minX, p.x <= f.minX && q.x > f.minX, CGVector(dx: -1, dy: 0), .left),
+                (f.maxX, p.x >= f.maxX && q.x < f.maxX, CGVector(dx: 1, dy: 0), .right),
+            ]
+            for e in edges where e.crosses {
+                let t = (e.x - p.x) / (q.x - p.x)
+                let y = p.y + (q.y - p.y) * t
+                if y >= f.minY && y <= f.maxY - r {
+                    consider(t, (CGPoint(x: e.x, y: y), e.normal, w.id, e.edge))
+                }
             }
         }
         return best
     }
 
-    private func impact(at p: CGPoint, normal n: CGVector, window id: UInt32, velocity v: CGVector) {
-        wetness[id] = min(1, (wetness[id] ?? 0) + 0.01)
+    private func impact(at p: CGPoint, normal n: CGVector, window id: UInt32, edge: Edge, velocity v: CGVector) {
+        let side = edge != .top
+        wetness[id] = min(1, (wetness[id] ?? 0) + (side ? 0.004 : 0.01))
         if splashes.count < Self.maxSplashes {
-            splashes.append(Splash(x: p.x, y: p.y, window: id, age: 0))
+            splashes.append(Splash(x: p.x, y: p.y, window: id, age: 0, vertical: side))
         }
+        // El rebote depende sobre todo de la velocidad contra la superficie: de lado, el viento.
         let speed = (v.dx * v.dx + v.dy * v.dy).squareRoot()
+        let normalSpeed = abs(v.dx * n.dx + v.dy * n.dy)
+        let impactSpeed = normalSpeed * 0.85 + speed * 0.15
         let count = Int.random(in: 1...(2 + Int((bounce * 3).rounded())))
         for _ in 0..<count where droplets.count < Self.maxDroplets {
-            let out = speed * .random(in: 0.12...0.28) * (0.4 + bounce * 1.2)
+            let out = impactSpeed * .random(in: 0.12...0.28) * (0.4 + bounce * 1.2)
             let a = CGFloat.random(in: -1.0...1.0)
             let dir = CGVector(dx: n.dx * cos(a) - n.dy * sin(a), dy: n.dx * sin(a) + n.dy * cos(a))
             droplets.append(Droplet(
-                x: p.x + dir.dx, y: p.y + max(0.5, dir.dy),
-                vx: dir.dx * out + v.dx * 0.25, vy: dir.dy * out,
+                x: p.x + dir.dx * 1.5, y: p.y + (side ? dir.dy * 1.5 : max(0.5, dir.dy)),
+                vx: dir.dx * out + v.dx * (side ? 0 : 0.25), vy: dir.dy * out + (side ? v.dy * 0.2 : 0),
                 window: id, age: 0, life: .random(in: 0.6...1.3),
                 radius: .random(in: 0.7...1.3), bounces: 0
+            ))
+        }
+        // Parte del agua que golpea un lateral se queda pegada y baja por él.
+        if side, beads.count < Self.maxBeads, CGFloat.random(in: 0...1) < 0.12, let f = frames[id] {
+            beads.append(Bead(
+                x: edge == .left ? f.minX - 0.8 : f.maxX + 0.8, y: p.y, v: 10, window: id, edge: edge,
+                age: 0, life: .infinity, radius: .random(in: 1.1...1.6), phase: .random(in: 0...(2 * .pi))
             ))
         }
     }
