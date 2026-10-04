@@ -188,24 +188,31 @@ final class RainView: NSView {
             for (isLeft, st) in [(true, pair.left), (false, pair.right)] where st.length > 1 {
                 let edgeX = isLeft ? f.minX - 0.8 : f.maxX + 0.8
                 let inward: CGFloat = isLeft ? 1 : -1
-                let width = 1.0 + 1.3 * st.strength
-                let alpha = 0.12 + 0.34 * min(1, st.strength * 1.5)
+                let width = 1.6 + 2.6 * st.strength
+                let alpha = 0.2 + 0.4 * min(1, st.strength * 1.5)
                 let seed: CGFloat = isLeft ? 0 : 2.1
                 func wobble(_ y: CGFloat) -> CGFloat {
                     sin(y * 0.045 + sim.time * 1.6 + seed) * 0.7 * min(1, (f.maxY - r - y) / 30)
                 }
+                // Cada tramo lleva un halo suave y un núcleo más claro, para que se lea como agua.
+                func water(_ a: CGPoint, _ b: CGPoint) {
+                    add(.segment, a, b, width: width + 2.4, alpha: alpha * 0.3, depth: UInt32(k))
+                    add(.segment, a, b, width: width, alpha: alpha, depth: UInt32(k))
+                }
                 // Vuelta a la esquina redondeada.
-                add(.segment, CGPoint(x: edgeX + inward * r * 0.45, y: f.maxY - r * 0.12),
-                    CGPoint(x: edgeX, y: f.maxY - r), width: width, alpha: alpha, depth: UInt32(k))
+                water(CGPoint(x: edgeX + inward * r * 0.45, y: f.maxY - r * 0.12), CGPoint(x: edgeX, y: f.maxY - r))
                 // Bajada por el lateral, en tramos con un ligero ondulado.
                 let top = f.maxY - r
                 let bottom = top - st.length
                 var y = top
                 while y > bottom {
                     let next = max(bottom, y - 12)
-                    add(.segment, CGPoint(x: edgeX + wobble(y), y: y), CGPoint(x: edgeX + wobble(next), y: next),
-                        width: width, alpha: alpha, depth: UInt32(k))
+                    water(CGPoint(x: edgeX + wobble(y), y: y), CGPoint(x: edgeX + wobble(next), y: next))
                     y = next
+                }
+                // Al llegar abajo, el chorro asoma por debajo del borde antes de romperse en gotas.
+                if st.length >= f.height - r - 1 && st.strength > 0.04 {
+                    water(CGPoint(x: edgeX, y: f.minY), CGPoint(x: edgeX, y: f.minY - 4 - 8 * st.strength))
                 }
                 // Gota colgando abajo que crece hasta soltarse.
                 if st.charge > 0.05 {
@@ -227,8 +234,16 @@ final class RainView: NSView {
         for d in sim.droplets {
             let fadeStart = d.life * 0.6
             let fade = d.age > fadeStart ? max(0, 1 - (d.age - fadeStart) / (d.life - fadeStart)) : 1
-            add(.ellipse, CGPoint(x: d.x, y: d.y), CGPoint(x: d.radius, y: d.radius),
-                width: 0, alpha: 0.6 * fade, depth: depth(d.window))
+            let speed = (d.vx * d.vx + d.vy * d.vy).squareRoot()
+            if d.drip && speed > 120 {
+                // El agua que cae de una ventana se estira en la dirección de caída.
+                let stretch = min(0.03, 26 / speed)
+                add(.segment, CGPoint(x: d.x, y: d.y), CGPoint(x: d.x - d.vx * stretch, y: d.y - d.vy * stretch),
+                    width: d.radius * 1.7, alpha: 0.55 * fade, depth: depth(d.window))
+            } else {
+                add(.ellipse, CGPoint(x: d.x, y: d.y), CGPoint(x: d.radius, y: d.radius),
+                    width: 0, alpha: 0.6 * fade, depth: depth(d.window))
+            }
         }
 
         for b in sim.beads {

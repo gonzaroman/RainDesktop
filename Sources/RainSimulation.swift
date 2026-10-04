@@ -50,6 +50,8 @@ final class RainSimulation {
         var window: UInt32?
         var age, life, radius: CGFloat
         var bounces: Int
+        /// Agua que gotea desde una ventana: cae hasta el fondo de la pantalla y salpica allí.
+        var drip = false
     }
 
     enum Edge { case top, left, right }
@@ -403,8 +405,11 @@ final class RainSimulation {
             }
             droplets[i] = d
         }
+        for d in droplets where d.drip && d.y < 2 && splashes.count < Self.maxSplashes {
+            splashes.append(Splash(x: d.x, y: 1, window: d.window, age: 0))
+        }
         let width = size.width
-        droplets.removeAll { $0.age >= $0.life || $0.y < -4 || $0.x < -50 || $0.x > width + 50 }
+        droplets.removeAll { $0.age >= $0.life || $0.y < ($0.drip ? 2 : -4) || $0.x < -50 || $0.x > width + 50 }
         beads += settled
     }
 
@@ -455,7 +460,7 @@ final class RainSimulation {
                 b.y -= b.v * pulse * dt
                 if b.y <= f.minY {
                     drips.append(Droplet(x: b.x, y: f.minY - 1, vx: wind * 20, vy: -b.v, window: b.window,
-                                         age: 0, life: 6, radius: b.radius * 0.8, bounces: 3))
+                                         age: 0, life: 6, radius: b.radius * 0.9, bounces: 3, drip: true))
                     b.age = .infinity
                 }
             }
@@ -501,12 +506,15 @@ final class RainSimulation {
                 }
                 if st.length >= full - 0.5 && st.strength > 0.04 {
                     // Abajo se forma una gota que crece hasta soltarse.
-                    st.charge += dt * (0.5 + 4.5 * st.strength)
+                    // Con poco caudal gotea; con mucho, el chorro se rompe en gotas seguidas.
+                    st.charge += dt * (0.8 + 13 * st.strength)
                     if st.charge >= 1 {
                         st.charge = 0
-                        let x = edge == .left ? f.minX - 0.8 : f.maxX + 0.8
-                        drips.append(Droplet(x: x, y: f.minY - 3, vx: wind * 15, vy: -30, window: id,
-                                             age: 0, life: 5, radius: .random(in: 1.4...2.0), bounces: 3))
+                        let x = (edge == .left ? f.minX - 0.8 : f.maxX + 0.8) + .random(in: -0.6...0.6)
+                        drips.append(Droplet(x: x, y: f.minY - 4 - 6 * st.strength, vx: wind * 15,
+                                             vy: -60 - 120 * st.strength, window: id, age: 0, life: 6,
+                                             radius: .random(in: 1.4...2.0) + st.strength * 0.5,
+                                             bounces: 3, drip: true))
                     }
                 } else {
                     st.charge = max(0, st.charge - dt)
