@@ -1,6 +1,8 @@
 import Foundation
 
 struct RainSettings: Equatable {
+    static let streamWidthRange = 0.5...12.0
+
     var raining = false
     /// De 0 a 1.
     var intensity = 0.6
@@ -12,6 +14,8 @@ struct RainSettings: Equatable {
     var collide = true
     /// Rebotar también en los laterales (se nota con viento).
     var sideCollide = true
+    /// Grosor en puntos de un hilo lateral con el caudal máximo.
+    var streamWidth = 4.2
     var sound = true
     /// De 0 a 1.
     var volume = 0.5
@@ -29,6 +33,7 @@ enum SettingsStore {
         static let lightning = "lightning"
         static let collide = "collide"
         static let sideCollide = "sideCollide"
+        static let streamWidth = "streamWidth"
         static let sound = "sound"
         static let volume = "volume"
     }
@@ -42,6 +47,8 @@ enum SettingsStore {
         s.lightning = defaults.object(forKey: Key.lightning) as? Bool ?? s.lightning
         s.collide = defaults.object(forKey: Key.collide) as? Bool ?? s.collide
         s.sideCollide = defaults.object(forKey: Key.sideCollide) as? Bool ?? s.sideCollide
+        s.streamWidth = clamp(defaults.object(forKey: Key.streamWidth) as? Double ?? s.streamWidth,
+                              RainSettings.streamWidthRange.lowerBound, RainSettings.streamWidthRange.upperBound)
         s.sound = defaults.object(forKey: Key.sound) as? Bool ?? s.sound
         s.volume = clamp(defaults.object(forKey: Key.volume) as? Double ?? s.volume, 0, 1)
         return s
@@ -55,6 +62,7 @@ enum SettingsStore {
         defaults.set(s.lightning, forKey: Key.lightning)
         defaults.set(s.collide, forKey: Key.collide)
         defaults.set(s.sideCollide, forKey: Key.sideCollide)
+        defaults.set(s.streamWidth, forKey: Key.streamWidth)
         defaults.set(s.sound, forKey: Key.sound)
         defaults.set(s.volume, forKey: Key.volume)
     }

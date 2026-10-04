@@ -59,6 +59,9 @@ struct ControlPanel: View {
                       symbol: "wind", value: $model.settings.wind, range: -1...1)
             SliderRow(title: "Rebote", detail: Self.describeBounce(model.settings.bounce),
                       symbol: "drop", value: $model.settings.bounce, range: 0...1)
+            NumberRow(title: "Grosor de los hilos", symbol: "line.3.horizontal.decrease",
+                      unit: "pt", value: $model.settings.streamWidth,
+                      range: RainSettings.streamWidthRange, step: 0.5)
 
             Divider()
 
@@ -155,6 +158,45 @@ private struct SliderRow: View {
             }
             .font(.callout)
             Slider(value: $value, in: range)
+                .controlSize(.small)
+        }
+    }
+}
+
+/// Campo numérico con flechas: se puede escribir un valor o subirlo y bajarlo de `step` en `step`.
+private struct NumberRow: View {
+    let title: String
+    let symbol: String
+    let unit: String
+    @Binding var value: Double
+    let range: ClosedRange<Double>
+    let step: Double
+
+    private static let formatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.minimumFractionDigits = 1
+        f.maximumFractionDigits = 2
+        return f
+    }()
+
+    private var clamped: Binding<Double> {
+        Binding(get: { value }, set: { value = min(max($0, range.lowerBound), range.upperBound) })
+    }
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Label(title, systemImage: symbol)
+                .font(.callout)
+            Spacer()
+            TextField("", value: clamped, formatter: Self.formatter)
+                .textFieldStyle(.roundedBorder)
+                .multilineTextAlignment(.trailing)
+                .frame(width: 52)
+                .controlSize(.small)
+            Text(unit).font(.callout).foregroundStyle(.secondary)
+            Stepper("", value: clamped, in: range, step: step)
+                .labelsHidden()
                 .controlSize(.small)
         }
     }

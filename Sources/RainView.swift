@@ -23,6 +23,8 @@ final class RainView: NSView {
 
     /// Se llama cuando cae un rayo en esta pantalla.
     var onLightning: (() -> Void)?
+    /// Grosor en puntos de un hilo lateral con el caudal máximo.
+    private var streamWidth: CGFloat = 4.2
 
     private var metalLayer: CAMetalLayer? { layer as? CAMetalLayer }
 
@@ -78,6 +80,7 @@ final class RainView: NSView {
         sim.collide = settings.collide
         sim.sideCollide = settings.collide && settings.sideCollide
         sim.lightning = lightning
+        streamWidth = CGFloat(settings.streamWidth)
     }
 
     /// Ventanas de esta pantalla, en coordenadas locales y ordenadas de delante a atrás.
@@ -188,7 +191,8 @@ final class RainView: NSView {
             for (isLeft, st) in [(true, pair.left), (false, pair.right)] where st.length > 1 {
                 let edgeX = isLeft ? f.minX - 0.8 : f.maxX + 0.8
                 let inward: CGFloat = isLeft ? 1 : -1
-                let width = 1.6 + 2.6 * st.strength
+                // Con poco caudal el hilo baja al 38 % del grosor elegido.
+                let width = streamWidth * (0.38 + 0.62 * st.strength)
                 let alpha = 0.2 + 0.4 * min(1, st.strength * 1.5)
                 let seed: CGFloat = isLeft ? 0 : 2.1
                 func wobble(_ y: CGFloat) -> CGFloat {
@@ -196,7 +200,7 @@ final class RainView: NSView {
                 }
                 // Cada tramo lleva un halo suave y un núcleo más claro, para que se lea como agua.
                 func water(_ a: CGPoint, _ b: CGPoint) {
-                    add(.segment, a, b, width: width + 2.4, alpha: alpha * 0.3, depth: UInt32(k))
+                    add(.segment, a, b, width: width + streamWidth * 0.57, alpha: alpha * 0.3, depth: UInt32(k))
                     add(.segment, a, b, width: width, alpha: alpha, depth: UInt32(k))
                 }
                 // Vuelta a la esquina redondeada.
