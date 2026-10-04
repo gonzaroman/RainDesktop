@@ -22,6 +22,7 @@ done
 lipo -create "$BUILD/$APP-arm64" "$BUILD/$APP-x86_64" -output "$BUNDLE/Contents/MacOS/$APP"
 rm "$BUILD/$APP-arm64" "$BUILD/$APP-x86_64"
 cp Info.plist "$BUNDLE/Contents/Info.plist"
+cp Resources/AppIcon.icns "$BUNDLE/Contents/Resources/AppIcon.icns"
 
 echo "→ Firmando"
 codesign --force --sign - --options runtime --entitlements "$APP.entitlements" "$BUNDLE"

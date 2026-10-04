@@ -21,6 +21,9 @@ final class RainView: NSView {
     private var clearedWhileCovered = false
     private var instances: [RainRenderer.Instance] = []
 
+    /// Se llama cuando cae un rayo en esta pantalla.
+    var onLightning: (() -> Void)?
+
     private var metalLayer: CAMetalLayer? { layer as? CAMetalLayer }
 
     override init(frame frameRect: NSRect) {
@@ -107,6 +110,7 @@ final class RainView: NSView {
         let dt = lastTimestamp == 0 ? 1.0 / 60.0 : min(max(now - lastTimestamp, 0), 1.0 / 30.0)
         lastTimestamp = now
         sim.step(dt: CGFloat(dt))
+        if sim.didStrike { onLightning?() }
 
         // Con una ventana a pantalla completa no hay nada que ver: se limpia una vez y se deja de pintar.
         if fullyCovered {

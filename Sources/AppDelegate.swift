@@ -7,7 +7,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var rain: RainController!
 
     private var toggleItem: NSMenuItem!
-    private var intensityItems: [NSMenuItem] = []
+    private var intensityLabel: NSTextField!
+    private var soundItem: NSMenuItem!
+    private var volumeLabel: NSTextField!
+    private var volumeSlider: NSSlider!
     private var lightningItem: NSMenuItem!
     private var collideItem: NSMenuItem!
     private var loginItem: NSMenuItem!
@@ -35,26 +38,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         toggleItem = addItem(to: menu, "", #selector(toggleRain), key: "r")
         menu.addItem(.separator())
 
-        let intensityMenu = NSMenu()
-        for (name, value) in [("Ligera", 0.3), ("Normal", 0.6), ("Fuerte", 1.0)] {
-            let item = addItem(to: intensityMenu, name, #selector(setIntensity(_:)))
-            item.representedObject = value
-            intensityItems.append(item)
-        }
-        let intensityParent = NSMenuItem(title: "Intensidad", action: nil, keyEquivalent: "")
-        intensityParent.submenu = intensityMenu
-        menu.addItem(intensityParent)
+        let (intensityItem, intensityText, _) = sliderItem(value: settings.intensity, range: 0...1,
+                                                           action: #selector(intensityChanged(_:)))
+        intensityLabel = intensityText
+        menu.addItem(intensityItem)
 
-        let (windItem, windText) = sliderItem(value: settings.wind, range: -1...1, action: #selector(windChanged(_:)))
+        let (windItem, windText, _) = sliderItem(value: settings.wind, range: -1...1, action: #selector(windChanged(_:)))
         windLabel = windText
         menu.addItem(windItem)
 
-        let (bounceItem, bounceText) = sliderItem(value: settings.bounce, range: 0...1, action: #selector(bounceChanged(_:)))
+        let (bounceItem, bounceText, _) = sliderItem(value: settings.bounce, range: 0...1, action: #selector(bounceChanged(_:)))
         bounceLabel = bounceText
         menu.addItem(bounceItem)
 
         menu.addItem(.separator())
-        lightningItem = addItem(to: menu, "Relámpagos", #selector(toggleLightning))
+        soundItem = addItem(to: menu, "Sonido de lluvia", #selector(toggleSound))
+        let (volumeItem, volumeText, slider) = sliderItem(value: settings.volume, range: 0...1,
+                                                          action: #selector(volumeChanged(_:)))
+        volumeLabel = volumeText
+        volumeSlider = slider
+        menu.addItem(volumeItem)
+
+        menu.addItem(.separator())
+        lightningItem = addItem(to: menu, "Relámpagos y truenos", #selector(toggleLightning))
         collideItem = addItem(to: menu, "Chocar con las ventanas", #selector(toggleCollide))
         menu.addItem(.separator())
         loginItem = addItem(to: menu, "Abrir al iniciar sesión", #selector(toggleLaunchAtLogin))
@@ -73,7 +79,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     /// Elemento de menú con una etiqueta encima de un deslizador.
-    private func sliderItem(value: Double, range: ClosedRange<Double>, action: Selector) -> (NSMenuItem, NSTextField) {
+    private func sliderItem(value: Double, range: ClosedRange<Double>,
+                            action: Selector) -> (NSMenuItem, NSTextField, NSSlider) {
         let container = NSView(frame: NSRect(x: 0, y: 0, width: 240, height: 46))
         let label = NSTextField(labelWithString: "")
         label.font = .menuFont(ofSize: 0)
@@ -89,7 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         let item = NSMenuItem()
         item.view = container
-        return (item, label)
+        return (item, label, slider)
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
@@ -100,15 +107,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         toggleItem.title = settings.raining ? "Dejar de llover" : "Empezar a llover"
         let symbol = settings.raining ? "cloud.rain.fill" : "cloud.rain"
         statusItem.button?.image = NSImage(systemSymbolName: symbol, accessibilityDescription: "RainDesktop")
-        for item in intensityItems {
-            let value = item.representedObject as? Double ?? -1
-            item.state = abs(value - settings.intensity) < 0.01 ? .on : .off
-        }
+        intensityLabel.stringValue = "Intensidad: " + Self.describeIntensity(settings.intensity)
+        soundItem.state = settings.sound ? .on : .off
+        volumeLabel.stringValue = "Volumen: \(Int((settings.volume * 100).rounded())) %"
+        volumeSlider.isEnabled = settings.sound
+        volumeLabel.textColor = settings.sound ? .labelColor : .disabledControlTextColor
         windLabel.stringValue = "Viento: " + Self.describeWind(settings.wind)
         bounceLabel.stringValue = "Rebote: " + Self.describeBounce(settings.bounce)
         lightningItem.state = settings.lightning ? .on : .off
         collideItem.state = settings.collide ? .on : .off
         loginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
+    }
+
+    private static func describeIntensity(_ v: Double) -> String {
+        switch v {
+        case ..<0.15: return "llovizna"
+        case ..<0.35: return "ligera"
+        case ..<0.55: return "moderada"
+        case ..<0.75: return "fuerte"
+        case ..<0.9: return "tormenta"
+        default: return "diluvio"
+        }
     }
 
     private static func describeWind(_ v: Double) -> String {
@@ -135,9 +154,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         update { $0.raining.toggle() }
     }
 
-    @objc private func setIntensity(_ sender: NSMenuItem) {
-        guard let value = sender.representedObject as? Double else { return }
-        update { $0.intensity = value }
+    @objc private func intensityChanged(_ sender: NSSlider) {
+        update { $0.intensity = sender.doubleValue }
+    }
+
+    @objc private func toggleSound() {
+        update { $0.sound.toggle() }
+    }
+
+    @objc private func volumeChanged(_ sender: NSSlider) {
+        update { $0.volume = sender.doubleValue }
     }
 
     @objc private func windChanged(_ sender: NSSlider) {

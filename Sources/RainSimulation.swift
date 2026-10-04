@@ -71,9 +71,10 @@ final class RainSimulation {
 
     static let gravity: CGFloat = 1800
     static let splashDuration: CGFloat = 0.28
-    private static let maxDroplets = 400
-    private static let maxBeads = 60
-    private static let maxSplashes = 120
+    private static let maxDroplets = 900
+    private static let maxBeads = 90
+    private static let maxSplashes = 250
+    private static let maxDrops = 4500
     /// Área de referencia (MacBook Pro 14") para escalar el número de gotas a cada pantalla.
     private static let referenceArea: CGFloat = 1512 * 982
     /// Inclinación máxima de la lluvia: vx = wind * windSlope * velocidad de caída.
@@ -101,6 +102,8 @@ final class RainSimulation {
     private(set) var splashes: [Splash] = []
     private(set) var wetness: [UInt32: CGFloat] = [:]
     private(set) var flash: CGFloat = 0
+    /// `true` durante el paso en que cae un rayo (para el trueno).
+    private(set) var didStrike = false
 
     private var frames: [UInt32: CGRect] = [:]
     private var nextBolt = CGFloat.random(in: 6...16)
@@ -191,10 +194,11 @@ final class RainSimulation {
         abs(wind) * Self.windSlope * size.height + 80
     }
 
+    /// Escala exponencial: 0 ≈ 60 gotas (llovizna), 0,5 ≈ 380, 1 ≈ 2.400 (diluvio), en una pantalla de 14".
     private func targetDropCount() -> Int {
         let area = size.width * size.height
         let scale = min(max(area / Self.referenceArea, 0.6), 2.5)
-        return Int((90 + 650 * intensity) * scale)
+        return min(Int(60 * pow(40, intensity) * scale), Self.maxDrops)
     }
 
     private func syncDropCount() {
@@ -210,7 +214,9 @@ final class RainSimulation {
 
     private func makeDrop(anywhere: Bool) -> Drop {
         let near = CGFloat.random(in: 0...1) < 0.65
-        let speed = near ? CGFloat.random(in: 780...1150) : CGFloat.random(in: 420...620)
+        // Con más intensidad, gotas más rápidas, largas y visibles.
+        let heavy = 0.85 + 0.35 * intensity
+        let speed = (near ? CGFloat.random(in: 780...1150) : CGFloat.random(in: 420...620)) * heavy
         let vx = wind * Self.windSlope * speed
         // Las gotas nacen a barlovento para que, con viento, la pantalla quede cubierta por igual.
         let drift = vx / speed * size.height
@@ -221,8 +227,8 @@ final class RainSimulation {
             y: anywhere ? .random(in: 0...(size.height + 40)) : size.height + .random(in: 4...60),
             vx: vx,
             vy: -speed,
-            length: near ? .random(in: 16...28) * speed / 950 : .random(in: 9...15),
-            alpha: near ? .random(in: 0.28...0.5) : .random(in: 0.14...0.26),
+            length: (near ? .random(in: 16...28) * speed / 950 : .random(in: 9...15)) * heavy,
+            alpha: (near ? .random(in: 0.28...0.5) : .random(in: 0.14...0.26)) * (0.9 + 0.2 * intensity),
             near: near
         )
     }
@@ -382,10 +388,12 @@ final class RainSimulation {
     }
 
     private func stepLightning(_ dt: CGFloat) {
+        didStrike = false
         if lightning {
             nextBolt -= dt
             if nextBolt <= 0 {
                 flash = max(flash, .random(in: 0.10...0.18))
+                didStrike = true
                 secondPulseIn = 0.09
                 nextBolt = .random(in: 8...22)
             }

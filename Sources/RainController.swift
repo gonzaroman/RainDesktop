@@ -9,6 +9,7 @@ final class RainController {
 
     private var windows: [RainWindow] = []
     private let tracker = WindowTracker()
+    private let sound = RainSound()
     private var tracked: [TrackedWindow] = []
     private var running = false
     private var reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
@@ -53,6 +54,17 @@ final class RainController {
             stop()
         }
         configureViews()
+        configureSound()
+    }
+
+    private func configureSound() {
+        sound.intensity = settings.intensity
+        sound.volume = settings.volume
+        if running && settings.sound {
+            sound.play()
+        } else {
+            sound.stop()
+        }
     }
 
     private func configureViews() {
@@ -99,7 +111,11 @@ final class RainController {
     }
 
     private func createWindows() {
-        windows = NSScreen.screens.map { RainWindow(screen: $0) }
+        windows = NSScreen.screens.map { screen in
+            let window = RainWindow(screen: screen)
+            window.rainView.onLightning = { [weak self] in self?.sound.thunder() }
+            return window
+        }
     }
 
     /// Al conectar o desconectar pantallas se cierran todas las ventanas de lluvia y se crean de nuevo.
