@@ -63,6 +63,25 @@ final class RainSimulation {
         var age, life, radius, phase: CGFloat
     }
 
+    /// Hilo de agua que baja por un lateral, alimentado por el agua que llega desde arriba.
+    struct Stream {
+        /// Caudal, de 0 a 1, según el agua que llega por segundo a este lado.
+        var strength: CGFloat = 0
+        /// Agua que ha llegado en este paso (impactos laterales y desagüe de arriba).
+        var inflow: CGFloat = 0
+        /// Cuánto ha bajado el hilo desde la esquina, en puntos.
+        var length: CGFloat = 0
+        /// Gota que se va formando abajo, de 0 a 1; al llegar a 1 se suelta.
+        var charge: CGFloat = 0
+    }
+
+    struct Streams {
+        /// Agua acumulada encima de la ventana, en «impactos».
+        var pool: CGFloat = 0
+        var left = Stream()
+        var right = Stream()
+    }
+
     struct Splash {
         var x, y: CGFloat
         var window: UInt32?
@@ -74,7 +93,7 @@ final class RainSimulation {
     static let gravity: CGFloat = 1800
     static let splashDuration: CGFloat = 0.28
     private static let maxDroplets = 900
-    private static let maxBeads = 90
+    private static let maxBeads = 260
     private static let maxSplashes = 250
     private static let maxDrops = 4500
     /// Área de referencia (MacBook Pro 14") para escalar el número de gotas a cada pantalla.
@@ -105,6 +124,9 @@ final class RainSimulation {
     private(set) var beads: [Bead] = []
     private(set) var splashes: [Splash] = []
     private(set) var wetness: [UInt32: CGFloat] = [:]
+    private(set) var streams: [UInt32: Streams] = [:]
+    /// Tiempo de simulación, para animar el ondulado de los hilos.
+    private(set) var time: CGFloat = 0
     private(set) var flash: CGFloat = 0
     /// `true` durante el paso en que cae un rayo (para el trueno).
     private(set) var didStrike = false
@@ -175,15 +197,18 @@ final class RainSimulation {
         }
 
         wetness = wetness.filter { current[$0.key] != nil }
+        streams = streams.filter { current[$0.key] != nil }
     }
 
     // MARK: - Paso de simulación
 
     func step(dt: CGFloat) {
         guard size.width > 0, size.height > 0, dt > 0 else { return }
+        time += dt
         stepDrops(dt)
         stepDroplets(dt)
         stepBeads(dt)
+        stepStreams(dt)
 
         for i in splashes.indices { splashes[i].age += dt }
         splashes.removeAll { $0.age >= Self.splashDuration }
@@ -329,7 +354,15 @@ final class RainSimulation {
                 radius: .random(in: 0.7...1.3), bounces: 0
             ))
         }
-        // Parte del agua que golpea un lateral se queda pegada y baja por él.
+        // Parte del agua se queda en la superficie: arriba corre hacia los bordes; de lado, baja.
+        if !side, beads.count < Self.maxBeads, CGFloat.random(in: 0...1) < 0.22, let f = frames[id] {
+            beads.append(makeBead(window: id, frame: f, x: p.x))
+        }
+        if side {
+            feed(id, edge, 1)
+        } else {
+            streams[id, default: Streams()].pool += 1
+        }
         if side, beads.count < Self.maxBeads, CGFloat.random(in: 0...1) < 0.12, let f = frames[id] {
             beads.append(Bead(
                 x: edge == .left ? f.minX - 0.8 : f.maxX + 0.8, y: p.y, v: 10, window: id, edge: edge,
@@ -354,7 +387,7 @@ final class RainSimulation {
                 let vn = d.vx * s.normal.dx + d.vy * s.normal.dy
                 if vn > -60 || d.bounces >= 3 {
                     // Sin energía: se queda como perla o se la bebe el borde mojado.
-                    let chance = 0.18 + 0.25 * (wetness[id] ?? 0)
+                    let chance = 0.35 + 0.4 * (wetness[id] ?? 0)
                     if beads.count + settled.count < Self.maxBeads && CGFloat.random(in: 0...1) < chance {
                         settled.append(makeBead(window: id, frame: f, x: d.x))
                     }
@@ -379,8 +412,8 @@ final class RainSimulation {
         let x = min(max(x, f.minX + 0.5), f.maxX - 0.5)
         return Bead(
             x: x, y: Surface.top(of: f, at: x)?.y ?? f.maxY,
-            v: .random(in: -18...18), window: id, edge: .top,
-            age: 0, life: .random(in: 2.5...6),
+            v: .random(in: -10...10), window: id, edge: .top,
+            age: 0, life: .random(in: 25...40),
             radius: .random(in: 1.2...1.9), phase: .random(in: 0...(2 * .pi))
         )
     }
@@ -394,13 +427,17 @@ final class RainSimulation {
             switch b.edge {
             case .top:
                 let r = Surface.radius(of: f)
-                var target = wind * 45
-                // Cerca de una esquina, el agua tiende a irse hacia ella.
-                if b.x < f.minX + 3 * r { target -= 25 } else if b.x > f.maxX - 3 * r { target += 25 }
-                b.v += (target - b.v) * min(1, dt * 1.5)
+                // Como en una superficie plana, el agua corre hacia el borde más cercano, más deprisa
+                // cuanto más mojada está; el viento la empuja.
+                let wet = wetness[b.window] ?? 0
+                let toEdge: CGFloat = b.x < f.midX ? -1 : 1
+                let edgeDistance = min(b.x - f.minX, f.maxX - b.x)
+                let nearCorner: CGFloat = edgeDistance < 3 * r ? 30 : 0
+                let target = toEdge * (18 + 90 * wet + nearCorner) + wind * 45
+                b.v += (target - b.v) * min(1, dt * 1.2)
                 b.x += b.v * dt
                 if b.x <= f.minX || b.x >= f.maxX {
-                    // Dobla la esquina y empieza a bajar por el lateral.
+                    // Dobla la esquina, alimenta el hilo de ese lado y empieza a bajar por él.
                     b.edge = b.x <= f.minX ? .left : .right
                     b.x = b.edge == .left ? f.minX - 0.8 : f.maxX + 0.8
                     b.y = f.maxY - r
@@ -411,8 +448,9 @@ final class RainSimulation {
                     b.y = Surface.top(of: f, at: b.x)?.y ?? f.maxY
                 }
             case .left, .right:
-                // Baja a tirones, como un hilo de agua.
-                b.v = min(b.v + 160 * dt, 150)
+                // Baja a tirones; por un hilo ya mojado corre más.
+                let stream = b.edge == .left ? streams[b.window]?.left : streams[b.window]?.right
+                b.v = min(b.v + 160 * dt, 150 + 120 * (stream?.strength ?? 0))
                 let pulse = 0.55 + 0.45 * sin(b.age * 2.6 + b.phase)
                 b.y -= b.v * pulse * dt
                 if b.y <= f.minY {
@@ -424,6 +462,61 @@ final class RainSimulation {
             beads[i] = b
         }
         beads.removeAll { $0.age >= $0.life }
+        droplets += drips
+    }
+
+    private func feed(_ id: UInt32, _ edge: Edge, _ amount: CGFloat) {
+        switch edge {
+        case .left: streams[id, default: Streams()].left.inflow += amount
+        case .right: streams[id, default: Streams()].right.inflow += amount
+        case .top: break
+        }
+    }
+
+    private func stepStreams(_ dt: CGFloat) {
+        // El agua de arriba desagua en ~1,5 s hacia los dos lados; el viento la empuja a sotavento.
+        let drain = 1 - CGFloat(exp(-Double(dt) / 1.5))
+        let leftShare = min(max(0.5 - wind * 0.45, 0.08), 0.92)
+        let follow = min(1, dt / 1.2)
+        var drips: [Droplet] = []
+        for (id, var s) in streams {
+            guard let f = frames[id] else { continue }
+            let outflow = s.pool * drain
+            s.pool -= outflow
+            s.left.inflow += outflow * leftShare
+            s.right.inflow += outflow * (1 - leftShare)
+            let full = f.height - Surface.radius(of: f)
+            for edge in [Edge.left, .right] {
+                var st = edge == .left ? s.left : s.right
+                // ~8 impactos/s por lado dan un hilo fino; ~200/s, un chorro.
+                let target = 1 - CGFloat(exp(-Double(st.inflow / dt) / 60))
+                st.inflow = 0
+                st.strength += (target - st.strength) * follow
+                if st.strength > 0.04 {
+                    // El hilo avanza hacia abajo mientras le llega agua…
+                    st.length = min(full, st.length + (50 + 140 * st.strength) * dt)
+                } else {
+                    // …y se seca desde abajo cuando deja de llegar.
+                    st.length = max(0, st.length - 35 * dt)
+                }
+                if st.length >= full - 0.5 && st.strength > 0.04 {
+                    // Abajo se forma una gota que crece hasta soltarse.
+                    st.charge += dt * (0.5 + 4.5 * st.strength)
+                    if st.charge >= 1 {
+                        st.charge = 0
+                        let x = edge == .left ? f.minX - 0.8 : f.maxX + 0.8
+                        drips.append(Droplet(x: x, y: f.minY - 3, vx: wind * 15, vy: -30, window: id,
+                                             age: 0, life: 5, radius: .random(in: 1.4...2.0), bounces: 3))
+                    }
+                } else {
+                    st.charge = max(0, st.charge - dt)
+                }
+                if edge == .left { s.left = st } else { s.right = st }
+            }
+            streams[id] = s
+        }
+        streams = streams.filter { $0.value.pool > 0.01 || $0.value.left.length > 0 || $0.value.right.length > 0
+            || $0.value.left.strength > 0.01 || $0.value.right.strength > 0.01 }
         droplets += drips
     }
 

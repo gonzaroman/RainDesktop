@@ -181,6 +181,41 @@ final class RainView: NSView {
                 width: 1, alpha: wet * 0.25, depth: UInt32(k))
         }
 
+        // Hilos de agua por los laterales: dan la vuelta a la esquina, bajan ondulando y gotean.
+        for (id, pair) in sim.streams {
+            guard let k = depthOf[id], let f = sim.frame(of: id) else { continue }
+            let r = Surface.radius(of: f)
+            for (isLeft, st) in [(true, pair.left), (false, pair.right)] where st.length > 1 {
+                let edgeX = isLeft ? f.minX - 0.8 : f.maxX + 0.8
+                let inward: CGFloat = isLeft ? 1 : -1
+                let width = 1.0 + 1.3 * st.strength
+                let alpha = 0.12 + 0.34 * min(1, st.strength * 1.5)
+                let seed: CGFloat = isLeft ? 0 : 2.1
+                func wobble(_ y: CGFloat) -> CGFloat {
+                    sin(y * 0.045 + sim.time * 1.6 + seed) * 0.7 * min(1, (f.maxY - r - y) / 30)
+                }
+                // Vuelta a la esquina redondeada.
+                add(.segment, CGPoint(x: edgeX + inward * r * 0.45, y: f.maxY - r * 0.12),
+                    CGPoint(x: edgeX, y: f.maxY - r), width: width, alpha: alpha, depth: UInt32(k))
+                // Bajada por el lateral, en tramos con un ligero ondulado.
+                let top = f.maxY - r
+                let bottom = top - st.length
+                var y = top
+                while y > bottom {
+                    let next = max(bottom, y - 12)
+                    add(.segment, CGPoint(x: edgeX + wobble(y), y: y), CGPoint(x: edgeX + wobble(next), y: next),
+                        width: width, alpha: alpha, depth: UInt32(k))
+                    y = next
+                }
+                // Gota colgando abajo que crece hasta soltarse.
+                if st.charge > 0.05 {
+                    add(.ellipse, CGPoint(x: edgeX, y: f.minY - 1 - st.charge * 2.5),
+                        CGPoint(x: 1 + st.charge * 0.9, y: 1.2 + st.charge * 1.7),
+                        width: 0, alpha: 0.4 + 0.3 * st.charge, depth: UInt32(k))
+                }
+            }
+        }
+
         for s in sim.splashes {
             let t = s.age / RainSimulation.splashDuration
             let rx = 2 + t * 7

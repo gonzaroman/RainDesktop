@@ -36,7 +36,7 @@ final class RainRenderer {
     }
 
     static let maxShapes = 32
-    private static let maxInstances = 16384
+    private static let maxInstances = 32768
     private static let framesInFlight = 3
 
     let device: MTLDevice
