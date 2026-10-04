@@ -27,6 +27,8 @@ final class RainView: NSView {
     private var streamWidth: CGFloat = 1.0
     /// Inundación compartida por todas las pantallas.
     var flood: FloodState?
+    /// Altura máxima del agua, como fracción de la pantalla.
+    static let floodMaxFraction: CGFloat = 0.85
     private var flooding = false
 
     private var metalLayer: CAMetalLayer? { layer as? CAMetalLayer }
@@ -117,7 +119,8 @@ final class RainView: NSView {
         let dt = lastTimestamp == 0 ? 1.0 / 60.0 : min(max(now - lastTimestamp, 0), 1.0 / 30.0)
         lastTimestamp = now
         flood?.advance(to: now)
-        sim.waterLevel = (flood?.level ?? 0) * bounds.height
+        // El agua se queda por debajo del borde superior para que siga viéndose la lluvia.
+        sim.waterLevel = (flood?.level ?? 0) * bounds.height * Self.floodMaxFraction
         updateFloodLayering()
         sim.step(dt: CGFloat(dt))
         if sim.didStrike { onLightning?() }
@@ -289,6 +292,15 @@ final class RainView: NSView {
         // Olas más altas cuanto más llueve; casi planas al empezar a subir.
         let amplitude = min(level * 0.5, 3 + 5 * sim.intensity)
         add(.water, CGPoint(x: level, y: sim.time), CGPoint(x: 0, y: amplitude), width: 0, alpha: 1, depth: 0)
+
+        // Burbujas: aro transparente con un brillo arriba a la izquierda.
+        for b in sim.bubbles {
+            let fadeIn = min(1, b.age / 0.3)
+            add(.ring, CGPoint(x: b.x, y: b.y), CGPoint(x: b.radius, y: b.radius),
+                width: max(0.7, b.radius * 0.22), alpha: 0.5 * fadeIn, depth: 0)
+            add(.ellipse, CGPoint(x: b.x - b.radius * 0.35, y: b.y + b.radius * 0.4),
+                CGPoint(x: b.radius * 0.28, y: b.radius * 0.22), width: 0, alpha: 0.7 * fadeIn, depth: 0)
+        }
     }
 
     private func add(_ kind: RainRenderer.Kind, _ a: CGPoint, _ b: CGPoint,

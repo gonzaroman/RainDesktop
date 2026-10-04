@@ -65,6 +65,11 @@ final class RainSimulation {
         var age, life, radius, phase: CGFloat
     }
 
+    /// Burbuja que sube por el agua de la inundación.
+    struct Bubble {
+        var x, y, radius, vy, phase, age: CGFloat
+    }
+
     /// Hilo de agua que baja por un lateral, alimentado por el agua que llega desde arriba.
     struct Stream {
         /// Caudal, de 0 a 1, según el agua que llega por segundo a este lado.
@@ -100,6 +105,7 @@ final class RainSimulation {
     private static let maxBeads = 260
     private static let maxSplashes = 250
     private static let maxDrops = 4500
+    private static let maxBubbles = 220
     /// Área de referencia (MacBook Pro 14") para escalar el número de gotas a cada pantalla.
     private static let referenceArea: CGFloat = 1512 * 982
     /// Inclinación máxima de la lluvia: vx = wind * windSlope * velocidad de caída.
@@ -131,6 +137,8 @@ final class RainSimulation {
     private(set) var splashes: [Splash] = []
     private(set) var wetness: [UInt32: CGFloat] = [:]
     private(set) var streams: [UInt32: Streams] = [:]
+    private(set) var bubbles: [Bubble] = []
+    private var bubbleBurst = 0
     /// Tiempo de simulación, para animar el ondulado de los hilos.
     private(set) var time: CGFloat = 0
     private(set) var flash: CGFloat = 0
@@ -215,6 +223,7 @@ final class RainSimulation {
         stepDroplets(dt)
         stepBeads(dt)
         stepStreams(dt)
+        stepBubbles(dt)
 
         for i in splashes.indices { splashes[i].age += dt }
         splashes.removeAll { $0.age >= Self.splashDuration }
@@ -539,6 +548,46 @@ final class RainSimulation {
         streams = streams.filter { $0.value.pool > 0.01 || $0.value.left.length > 0 || $0.value.right.length > 0
             || $0.value.left.strength > 0.01 || $0.value.right.strength > 0.01 }
         droplets += drips
+    }
+
+    private func stepBubbles(_ dt: CGFloat) {
+        guard waterLevel > 20 else {
+            bubbles.removeAll()
+            return
+        }
+        // Más burbujas cuanto más ancha es la pantalla y más hondo está el agua.
+        let rate = 9 * size.width / 1512 * min(1, waterLevel / 250)
+        if CGFloat.random(in: 0...1) < rate * dt {
+            // A veces sale una racha de varias desde el mismo sitio.
+            let x = CGFloat.random(in: 0...size.width)
+            let count = Int.random(in: 0..<5) == 0 ? Int.random(in: 3...6) : 1
+            for i in 0..<count where bubbles.count < Self.maxBubbles {
+                let radius = CGFloat.random(in: 1.2...4.5)
+                bubbles.append(Bubble(x: x + .random(in: -6...6), y: -radius - CGFloat(i) * 9,
+                                      radius: radius, vy: .random(in: 25...45),
+                                      phase: .random(in: 0...(2 * .pi)), age: 0))
+            }
+        }
+        let surface = waterLevel - 2
+        var popped: [Splash] = []
+        for i in bubbles.indices {
+            var b = bubbles[i]
+            b.age += dt
+            // Suben cada vez más deprisa (las grandes más) y se balancean de lado a lado.
+            b.vy = min(b.vy + 40 * dt, 50 + b.radius * 22)
+            b.y += b.vy * dt
+            b.x += sin(b.age * 3.2 + b.phase) * (8 + b.radius * 2) * dt
+            if b.y + b.radius >= surface {
+                if splashes.count + popped.count < Self.maxSplashes {
+                    popped.append(Splash(x: b.x, y: waterLevel, window: nil, age: Self.splashDuration * 0.35,
+                                         onWater: true))
+                }
+                b.age = -1
+            }
+            bubbles[i] = b
+        }
+        bubbles.removeAll { $0.age < 0 }
+        splashes += popped
     }
 
     private func stepLightning(_ dt: CGFloat) {
