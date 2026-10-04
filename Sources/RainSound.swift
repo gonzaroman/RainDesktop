@@ -21,6 +21,8 @@ final class RainSound {
     var intensity: Double = 0.5 { didSet { synth.targetIntensity = Float(intensity) } }
     /// De 0 a 1.
     var volume: Double = 0.5 { didSet { synth.targetVolume = Float(volume * volume) } }
+    /// De 0 a 1: cuánto suena «bajo el agua» (sigue al nivel de la inundación).
+    var muffle: Double = 0 { didSet { synth.targetMuffle = Float(muffle) } }
 
     init() {
         configObserver = NotificationCenter.default.addObserver(
@@ -170,6 +172,9 @@ private final class RainSynth {
     var targetIntensity: Float = 0.5
     var targetVolume: Float = 0.25
     var targetDuck: Float = 1
+    var targetMuffle: Float = 0
+    private var muffle: Float = 0
+    private var muffleL: Float = 0, muffleR: Float = 0
 
     private var thunderRequests = 0
     private var thunderHandled = 0
@@ -248,6 +253,9 @@ private final class RainSynth {
         let bodyGain: Float = 1.6 * i * i
         let dropRate: Float = 25 + 900 * i * i
         let dropChance = dropRate / sampleRate
+        // Bajo el agua: paso bajo que va de ~16 kHz (seco) a ~400 Hz (pantalla llena).
+        muffle += (targetMuffle - muffle) * min(1, Float(frames) / (0.05 * sampleRate))
+        let muffleCoef = Self.onePole(cutoff: 16_000 * pow(400 / 16_000, muffle), sampleRate: sampleRate)
 
         for n in 0..<frames {
             intensity += (targetIntensity - intensity) * smoothing
@@ -319,9 +327,11 @@ private final class RainSynth {
                 r += rumble
             }
 
+            muffleL += muffleCoef * (l - muffleL)
+            muffleR += muffleCoef * (r - muffleR)
             let gain = volume * duck * 1.8
-            left[n] = tanhf(l * gain)
-            right[n] = tanhf(r * gain)
+            left[n] = tanhf(muffleL * gain)
+            right[n] = tanhf(muffleR * gain)
         }
     }
 }

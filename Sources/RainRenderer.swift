@@ -11,6 +11,7 @@ final class RainRenderer {
         case ellipse = 1   // centro a, radios b
         case ring = 2      // centro a, radios b, grosor `width`
         case fullscreen = 3
+        case water = 4     // a = (nivel, tiempo), b.y = altura de las olas
     }
 
     /// Mismo diseño de memoria que `Instance` en el shader (32 bytes).
@@ -150,6 +151,7 @@ final class RainRenderer {
         float2 lo, hi;
         if (s.kind == 0) { lo = min(s.a, s.b) - pad; hi = max(s.a, s.b) + pad; }
         else if (s.kind == 3) { lo = float2(0.0); hi = u.viewport; }
+        else if (s.kind == 4) { lo = float2(0.0); hi = float2(u.viewport.x, s.a.x + s.b.y * 2.0 + pad); }
         else { lo = s.a - s.b - pad; hi = s.a + s.b + pad; }
         float2 p = mix(lo, hi, float2(float(vid & 1), float(vid >> 1)));
         VOut o;
@@ -175,6 +177,29 @@ final class RainRenderer {
         uint depth = min(s.depth, u.shapeCount);
         for (uint i = 0; i < depth; i++) {
             if (roundedRectDistance(p, shapes[i].rect, shapes[i].params.x) < 0.0) discard_fragment();
+        }
+        if (s.kind == 4) {
+            // Agua: superficie con tres trenes de olas, color según la profundidad,
+            // reflejos (cáusticas) en movimiento y una franja brillante en la superficie.
+            float t = s.a.y;
+            float amp = s.b.y;
+            float surface = s.a.x + amp * (0.6 * sin(p.x * 0.012 + t * 1.3)
+                                         + 0.3 * sin(p.x * 0.031 - t * 2.1)
+                                         + 0.1 * sin(p.x * 0.070 + t * 3.3));
+            float dist = surface - p.y;
+            float cover = clamp(dist * u.scale + 0.5, 0.0, 1.0);
+            if (cover <= 0.0) discard_fragment();
+            float deep = clamp(dist / 700.0, 0.0, 1.0);
+            float3 col = mix(float3(0.30, 0.55, 0.95), float3(0.04, 0.14, 0.42), deep);
+            float c = sin(p.x * 0.021 + t * 0.9) + sin(p.y * 0.027 - t * 1.2)
+                    + sin((p.x - p.y) * 0.016 + t * 0.6) + sin((p.x + p.y) * 0.011 - t * 0.8);
+            c = pow(clamp(1.0 - abs(c) * 0.5, 0.0, 1.0), 6.0);
+            col += float3(0.5, 0.7, 1.0) * c * 0.25 * (1.0 - deep);
+            float a = 0.18 + 0.30 * deep + c * 0.06;
+            float band = clamp(1.0 - dist / 3.0, 0.0, 1.0);
+            col = mix(col, float3(0.85, 0.93, 1.0), band * 0.8);
+            a = max(a, band * 0.75) * cover * s.alpha;
+            return float4(col * a, a);
         }
         float d;
         if (s.kind == 0) {

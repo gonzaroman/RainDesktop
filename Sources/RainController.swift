@@ -10,6 +10,7 @@ final class RainController {
     private var windows: [RainWindow] = []
     private let tracker = WindowTracker()
     private let sound = RainSound()
+    private let flood = FloodState()
     private var tracked: [TrackedWindow] = []
     private var running = false
     private var reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
@@ -17,6 +18,7 @@ final class RainController {
 
     init(settings: RainSettings) {
         self.settings = settings
+        flood.onChange = { [weak self] level in self?.sound.muffle = Double(level) }
         tracker.onUpdate = { [weak self] list in
             self?.tracked = list
             self?.distribute()
@@ -70,6 +72,8 @@ final class RainController {
     private func configureViews() {
         // Con «Reducir movimiento» activado no hay relámpagos.
         let lightning = settings.lightning && !reduceMotion
+        flood.enabled = settings.flood
+        flood.fillDuration = CGFloat(settings.floodMinutes * 60)
         for w in windows {
             w.rainView.configure(with: settings, lightning: lightning)
         }
@@ -85,6 +89,7 @@ final class RainController {
 
     private func stop() {
         running = false
+        flood.reset()
         tracker.stop()
         tracked = []
         for w in windows {
@@ -113,6 +118,7 @@ final class RainController {
     private func createWindows() {
         windows = NSScreen.screens.map { screen in
             let window = RainWindow(screen: screen)
+            window.rainView.flood = flood
             window.rainView.onLightning = { [weak self] in self?.sound.thunder() }
             return window
         }

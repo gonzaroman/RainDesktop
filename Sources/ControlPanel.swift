@@ -80,6 +80,14 @@ struct ControlPanel: View {
                       isOn: $model.settings.sideCollide)
                 .disabled(!model.settings.collide)
                 .opacity(model.settings.collide ? 1 : 0.45)
+            ToggleRow(title: "Inundar cuando no uses el Mac",
+                      caption: "Al tocar el ratón o el teclado, el agua se va.",
+                      isOn: $model.settings.flood)
+            SliderRow(title: "Se llena en", detail: Self.describeMinutes(model.settings.floodMinutes),
+                      symbol: "water.waves", value: $model.settings.floodMinutes,
+                      range: RainSettings.floodMinutesRange)
+                .disabled(!model.settings.flood)
+                .opacity(model.settings.flood ? 1 : 0.45)
             ToggleRow(title: "Abrir al iniciar sesión",
                       isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
 
@@ -133,6 +141,13 @@ struct ControlPanel: View {
         if a < 0.05 { return "calma" }
         let name = a < 0.45 ? "brisa" : "ventoso"
         return name + (v > 0 ? " →" : " ←")
+    }
+
+    static func describeMinutes(_ minutes: Double) -> String {
+        let seconds = Int((minutes * 60 / 5).rounded()) * 5
+        if seconds < 60 { return "\(seconds) s" }
+        let m = seconds / 60, s = seconds % 60
+        return s == 0 ? "\(m) min" : "\(m) min \(s) s"
     }
 
     static func describeBounce(_ v: Double) -> String {

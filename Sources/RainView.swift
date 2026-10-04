@@ -25,6 +25,9 @@ final class RainView: NSView {
     var onLightning: (() -> Void)?
     /// Grosor en puntos de un hilo lateral con el caudal máximo.
     private var streamWidth: CGFloat = 1.0
+    /// Inundación compartida por todas las pantallas.
+    var flood: FloodState?
+    private var flooding = false
 
     private var metalLayer: CAMetalLayer? { layer as? CAMetalLayer }
 
@@ -113,11 +116,14 @@ final class RainView: NSView {
         let now = link.timestamp
         let dt = lastTimestamp == 0 ? 1.0 / 60.0 : min(max(now - lastTimestamp, 0), 1.0 / 30.0)
         lastTimestamp = now
+        flood?.advance(to: now)
+        sim.waterLevel = (flood?.level ?? 0) * bounds.height
+        updateFloodLayering()
         sim.step(dt: CGFloat(dt))
         if sim.didStrike { onLightning?() }
 
         // Con una ventana a pantalla completa no hay nada que ver: se limpia una vez y se deja de pintar.
-        if fullyCovered {
+        if fullyCovered && sim.waterLevel <= 0.5 {
             guard !clearedWhileCovered else { return }
             clearedWhileCovered = true
             instances.removeAll(keepingCapacity: true)
@@ -128,6 +134,15 @@ final class RainView: NSView {
         guard let renderer, let metalLayer else { return }
         renderer.render(to: metalLayer, viewport: bounds.size, scale: backingScale,
                         shapes: shapes, instances: instances)
+    }
+
+    /// Mientras hay agua, la ventana sube por encima del Dock y de la barra de menús para que la
+    /// inundación lo cubra todo; al vaciarse vuelve justo encima de las ventanas normales.
+    private func updateFloodLayering() {
+        let nowFlooding = sim.waterLevel > 0.5
+        guard nowFlooding != flooding, let window else { return }
+        flooding = nowFlooding
+        window.level = nowFlooding ? RainWindow.floodLevel : RainWindow.rainLevel
     }
 
     // MARK: - Oclusión
@@ -232,7 +247,7 @@ final class RainView: NSView {
             let rx = 2 + t * 7
             let center = s.vertical ? CGPoint(x: s.x, y: s.y) : CGPoint(x: s.x, y: s.y + rx * 0.23)
             let radii = s.vertical ? CGPoint(x: rx * 0.35, y: rx) : CGPoint(x: rx, y: rx * 0.35)
-            add(.ring, center, radii, width: 0.9, alpha: 0.45 * (1 - t), depth: depth(s.window))
+            add(.ring, center, radii, width: 0.9, alpha: 0.45 * (1 - t), depth: s.onWater ? 0 : depth(s.window))
         }
 
         for d in sim.droplets {
@@ -264,6 +279,16 @@ final class RainView: NSView {
                     width: 0, alpha: 0.6, depth: k)
             }
         }
+
+        addWater()
+    }
+
+    private func addWater() {
+        let level = sim.waterLevel
+        guard level > 0.5 else { return }
+        // Olas más altas cuanto más llueve; casi planas al empezar a subir.
+        let amplitude = min(level * 0.5, 3 + 5 * sim.intensity)
+        add(.water, CGPoint(x: level, y: sim.time), CGPoint(x: 0, y: amplitude), width: 0, alpha: 1, depth: 0)
     }
 
     private func add(_ kind: RainRenderer.Kind, _ a: CGPoint, _ b: CGPoint,

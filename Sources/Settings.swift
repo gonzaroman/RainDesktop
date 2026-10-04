@@ -2,6 +2,7 @@ import Foundation
 
 struct RainSettings: Equatable {
     static let streamWidthRange = 0.5...12.0
+    static let floodMinutesRange = 0.25...5.0
 
     var raining = false
     /// De 0 a 1.
@@ -16,6 +17,10 @@ struct RainSettings: Equatable {
     var sideCollide = true
     /// Grosor en puntos de un hilo lateral con el caudal máximo.
     var streamWidth = 1.0
+    /// Si no se usa el Mac, el agua va subiendo hasta llenar la pantalla.
+    var flood = false
+    /// Minutos que tarda en llenarse la pantalla.
+    var floodMinutes = 1.0
     var sound = true
     /// De 0 a 1.
     var volume = 0.5
@@ -34,6 +39,8 @@ enum SettingsStore {
         static let collide = "collide"
         static let sideCollide = "sideCollide"
         static let streamWidth = "streamWidth"
+        static let flood = "flood"
+        static let floodMinutes = "floodMinutes"
         static let sound = "sound"
         static let volume = "volume"
     }
@@ -49,6 +56,9 @@ enum SettingsStore {
         s.sideCollide = defaults.object(forKey: Key.sideCollide) as? Bool ?? s.sideCollide
         s.streamWidth = clamp(defaults.object(forKey: Key.streamWidth) as? Double ?? s.streamWidth,
                               RainSettings.streamWidthRange.lowerBound, RainSettings.streamWidthRange.upperBound)
+        s.flood = defaults.object(forKey: Key.flood) as? Bool ?? s.flood
+        s.floodMinutes = clamp(defaults.object(forKey: Key.floodMinutes) as? Double ?? s.floodMinutes,
+                               RainSettings.floodMinutesRange.lowerBound, RainSettings.floodMinutesRange.upperBound)
         s.sound = defaults.object(forKey: Key.sound) as? Bool ?? s.sound
         s.volume = clamp(defaults.object(forKey: Key.volume) as? Double ?? s.volume, 0, 1)
         return s
@@ -63,6 +73,8 @@ enum SettingsStore {
         defaults.set(s.collide, forKey: Key.collide)
         defaults.set(s.sideCollide, forKey: Key.sideCollide)
         defaults.set(s.streamWidth, forKey: Key.streamWidth)
+        defaults.set(s.flood, forKey: Key.flood)
+        defaults.set(s.floodMinutes, forKey: Key.floodMinutes)
         defaults.set(s.sound, forKey: Key.sound)
         defaults.set(s.volume, forKey: Key.volume)
     }

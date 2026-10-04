@@ -90,6 +90,8 @@ final class RainSimulation {
         var age: CGFloat
         /// Salpicadura contra un lateral: el anillo se dibuja en vertical.
         var vertical = false
+        /// Salpicadura en la superficie del agua de la inundación (se ve por delante de todo).
+        var onWater = false
     }
 
     static let gravity: CGFloat = 1800
@@ -119,6 +121,8 @@ final class RainSimulation {
     /// Las gotas que el viento empuja contra un lateral también rebotan.
     var sideCollide = false
     var lightning = true { didSet { if !lightning { flash = 0 } } }
+    /// Altura del agua de la inundación, en puntos. La lluvia y el goteo acaban en su superficie.
+    var waterLevel: CGFloat = 0
 
     private(set) var windows: [Obstacle] = []
     private(set) var drops: [Drop] = []
@@ -273,7 +277,8 @@ final class RainSimulation {
             d.vx += (targetVX - d.vx) * blend
             let next = CGPoint(x: d.x + d.vx * dt, y: d.y + d.vy * dt)
 
-            if collide && d.near, let hit = firstHit(from: CGPoint(x: d.x, y: d.y), to: next) {
+            if collide && d.near, let hit = firstHit(from: CGPoint(x: d.x, y: d.y), to: next),
+               hit.point.y >= waterLevel {
                 impact(at: hit.point, normal: hit.normal, window: hit.window, edge: hit.edge,
                        velocity: CGVector(dx: d.vx, dy: d.vy))
                 drops[i] = makeDrop(anywhere: false)
@@ -282,7 +287,13 @@ final class RainSimulation {
 
             d.x = next.x
             d.y = next.y
-            if d.y < 0 {
+            if waterLevel > 1 && d.y < waterLevel {
+                // Cae en el agua: anillo en la superficie.
+                if d.near && splashes.count < Self.maxSplashes && Int.random(in: 0..<3) == 0 {
+                    splashes.append(Splash(x: d.x, y: waterLevel, window: nil, age: 0, onWater: true))
+                }
+                d = makeDrop(anywhere: false)
+            } else if d.y < 0 {
                 if d.near && splashes.count < Self.maxSplashes && Int.random(in: 0..<4) == 0 {
                     splashes.append(Splash(x: d.x, y: 1, window: nil, age: 0))
                 }
@@ -405,11 +416,13 @@ final class RainSimulation {
             }
             droplets[i] = d
         }
-        for d in droplets where d.drip && d.y < 2 && splashes.count < Self.maxSplashes {
-            splashes.append(Splash(x: d.x, y: 1, window: d.window, age: 0))
+        let ground = max(2, waterLevel)
+        for d in droplets where d.drip && d.y < ground && splashes.count < Self.maxSplashes {
+            splashes.append(Splash(x: d.x, y: ground, window: waterLevel > 1 ? nil : d.window, age: 0,
+                                   onWater: waterLevel > 1))
         }
         let width = size.width
-        droplets.removeAll { $0.age >= $0.life || $0.y < ($0.drip ? 2 : -4) || $0.x < -50 || $0.x > width + 50 }
+        droplets.removeAll { $0.age >= $0.life || $0.y < ($0.drip ? ground : -4) || $0.x < -50 || $0.x > width + 50 }
         beads += settled
     }
 
