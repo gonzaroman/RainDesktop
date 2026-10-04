@@ -24,7 +24,7 @@ final class RainView: NSView {
     /// Se llama cuando cae un rayo en esta pantalla.
     var onLightning: (() -> Void)?
     /// Grosor en puntos de un hilo lateral con el caudal máximo.
-    private var streamWidth: CGFloat = 4.2
+    private var streamWidth: CGFloat = 1.0
 
     private var metalLayer: CAMetalLayer? { layer as? CAMetalLayer }
 

@@ -15,7 +15,7 @@ struct RainSettings: Equatable {
     /// Rebotar también en los laterales (se nota con viento).
     var sideCollide = true
     /// Grosor en puntos de un hilo lateral con el caudal máximo.
-    var streamWidth = 4.2
+    var streamWidth = 1.0
     var sound = true
     /// De 0 a 1.
     var volume = 0.5
