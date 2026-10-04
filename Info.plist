@@ -8,27 +8,29 @@
     <string>RainDesktop</string>
     <key>CFBundleDisplayName</key>
     <string>RainDesktop</string>
-    <key>CFBundleVersion</key>
-    <string>1.1</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.1</string>
-    <key>LSMultipleInstancesProhibited</key>
-    <true/>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
     <key>CFBundleExecutable</key>
     <string>RainDesktop</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleShortVersionString</key>
+    <string>2.0</string>
+    <key>CFBundleVersion</key>
+    <string>2</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>14.0</string>
     <key>LSUIElement</key>
     <true/>
+    <key>LSMultipleInstancesProhibited</key>
+    <true/>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.entertainment</string>
     <key>NSHighResolutionCapable</key>
     <true/>
-    <key>LSMinimumSystemVersion</key>
-    <string>13.0</string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
-    <key>NSScreenCaptureUsageDescription</key>
-    <string>RainDesktop necesita ver la posición de tus ventanas para que la lluvia choque en sus bordes.</string>
-    <key>NSAccessibilityUsageDescription</key>
-    <string>RainDesktop usa la posición de las ventanas para el efecto de lluvia que resbala por los bordes.</string>
+    <key>NSHumanReadableCopyright</key>
+    <string>© 2026 Gonzalo Román</string>
 </dict>
 </plist>
