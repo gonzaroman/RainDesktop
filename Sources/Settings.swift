@@ -22,6 +22,8 @@ struct RainSettings: Equatable {
     /// Minutos que tarda en llenarse la pantalla.
     var floodMinutes = 1.0
     var sound = true
+    /// Comprobar una vez al día si hay una versión nueva en GitHub.
+    var checkUpdates = true
     /// De 0 a 1.
     var volume = 0.5
 }
@@ -42,6 +44,7 @@ enum SettingsStore {
         static let flood = "flood"
         static let floodMinutes = "floodMinutes"
         static let sound = "sound"
+        static let checkUpdates = "checkUpdates"
         static let volume = "volume"
     }
 
@@ -58,6 +61,7 @@ enum SettingsStore {
         s.flood = bool(Key.flood, s.flood)
         s.floodMinutes = double(Key.floodMinutes, s.floodMinutes, RainSettings.floodMinutesRange)
         s.sound = bool(Key.sound, s.sound)
+        s.checkUpdates = bool(Key.checkUpdates, s.checkUpdates)
         s.volume = double(Key.volume, s.volume, 0...1)
         return s
     }
@@ -87,6 +91,7 @@ enum SettingsStore {
         defaults.set(s.flood, forKey: Key.flood)
         defaults.set(s.floodMinutes, forKey: Key.floodMinutes)
         defaults.set(s.sound, forKey: Key.sound)
+        defaults.set(s.checkUpdates, forKey: Key.checkUpdates)
         defaults.set(s.volume, forKey: Key.volume)
     }
 }

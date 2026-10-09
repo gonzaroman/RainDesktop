@@ -45,12 +45,16 @@ final class ControlPanelModel: ObservableObject {
 /// Panel que se abre desde el icono de la barra de menús.
 struct ControlPanel: View {
     @ObservedObject var model: ControlPanelModel
+    @ObservedObject var updates: UpdateChecker
     var onAbout: () -> Void
     var onQuit: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             header
+            if let release = updates.availableRelease {
+                UpdateBanner(release: release)
+            }
             Divider()
 
             SliderRow(title: L("Intensity"), detail: Self.describeIntensity(model.settings.intensity),
@@ -90,6 +94,15 @@ struct ControlPanel: View {
                 .opacity(model.settings.flood ? 1 : 0.45)
             ToggleRow(title: L("Open at login"),
                       isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
+            ToggleRow(title: L("Check for updates"), caption: L("Once a day, on GitHub."),
+                      isOn: $model.settings.checkUpdates)
+            HStack {
+                Text(updateStatus).font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                Button(L("Check now")) { updates.check() }
+                    .controlSize(.small)
+                    .disabled(updates.state == .checking)
+            }
 
             Divider()
 
@@ -104,6 +117,17 @@ struct ControlPanel: View {
         }
         .padding(16)
         .frame(width: 300)
+    }
+
+    private var updateStatus: String {
+        let current = updates.currentVersion
+        switch updates.state {
+        case .idle: return String(format: L("Version %@"), current)
+        case .checking: return L("Checking…")
+        case .upToDate: return String(format: L("You're up to date (%@)"), current)
+        case .available(let release): return String(format: L("Version %@ available"), release.version)
+        case .failed: return L("Couldn't check for updates")
+        }
     }
 
     private var header: some View {
@@ -152,6 +176,43 @@ struct ControlPanel: View {
 
     static func describeBounce(_ v: Double) -> String {
         v < 0.34 ? L("soft") : v < 0.67 ? L("medium") : L("strong")
+    }
+}
+
+/// Aviso de versión nueva, arriba del panel.
+private struct UpdateBanner: View {
+    let release: UpdateChecker.Release
+
+    /// Primera línea con texto de las notas de la versión (admite negritas y enlaces de Markdown).
+    private var summary: AttributedString? {
+        let line = release.notes.split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .first { !$0.isEmpty && !$0.hasPrefix("#") }
+        guard let line else { return nil }
+        return try? AttributedString(markdown: line)
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "arrow.down.circle.fill")
+                .font(.system(size: 20))
+                .foregroundStyle(.tint)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(String(format: L("Version %@ available"), release.version))
+                    .font(.callout.weight(.semibold))
+                if let summary {
+                    Text(summary).font(.caption).foregroundStyle(.secondary).lineLimit(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Button(L("Download")) { NSWorkspace.shared.open(release.url) }
+                    .controlSize(.small)
+                    .buttonStyle(.borderedProminent)
+                    .padding(.top, 2)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.accentColor.opacity(0.14)))
     }
 }
 

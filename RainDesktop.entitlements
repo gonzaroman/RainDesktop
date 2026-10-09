@@ -4,5 +4,8 @@
 <dict>
     <key>com.apple.security.app-sandbox</key>
     <true/>
+    <!-- Solo para preguntar a GitHub si hay una versión nueva. -->
+    <key>com.apple.security.network.client</key>
+    <true/>
 </dict>
 </plist>

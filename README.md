@@ -29,6 +29,8 @@
   each flash of lightning. It mutes itself while another app is using the microphone, for example during a call.
 - **Control panel** in the menu bar: intensity from drizzle to downpour, wind in both directions, bounce,
   stream width, volume and more. Right-click the icon to start or stop the rain.
+- **Update notices.** A dot on the menu bar icon tells you when a new version is out; one click takes
+  you to the download.
 - **Light on resources.** Rendered with Metal; the physics runs at 60 fps and drops to 30 fps in Low Power Mode.
 
 | Water running down the sides | Flood mode |
@@ -41,7 +43,7 @@
 
 ## Privacy
 
-RainDesktop asks for **no permissions** and makes **no network connections**.
+RainDesktop asks for **no permissions**, and its only network connection is the update check.
 
 - It only reads the **outline** of each window (position, size and stacking order), which macOS shares with
   every app. It never reads window titles, app names or anything on screen, so it doesn't need Screen Recording.
@@ -49,11 +51,13 @@ RainDesktop asks for **no permissions** and makes **no network connections**.
   input. It never sees what you type, so it doesn't need Input Monitoring.
 - To mute the sound during calls, it asks Core Audio whether another app is using the microphone. It never
   opens the microphone itself.
-- It runs in Apple's App Sandbox without the network entitlement, so macOS itself blocks any connection.
+- Once a day it asks GitHub's public API for the latest version, to tell you when there's a new one. That
+  request carries nothing about you, and you can turn it off in the panel (*Check for updates*).
+- It runs in Apple's App Sandbox, with outgoing connections as its only extra entitlement.
 
 ## Install
 
-1. Download `RainDesktop-1.0.zip` from the [latest release](https://github.com/gonzaroman/RainDesktop/releases/latest) and open it.
+1. Download `RainDesktop-1.1.zip` from the [latest release](https://github.com/gonzaroman/RainDesktop/releases/latest) and open it.
 2. Drag **RainDesktop.app** to your **Applications** folder.
 3. Open it. macOS will say it can't check the app for malicious software, because it isn't notarized by
    Apple. Click **Done** (not *Move to Trash*).
@@ -92,9 +96,10 @@ An app built on your own Mac opens without any Gatekeeper warning.
 
 **RainDesktop** pone lluvia detrás de tus ventanas en macOS: las gotas rebotan en las barras de título, el
 agua baja por los laterales y, si dejas el Mac un rato sin tocar, se va inundando. La app está en español
-e inglés (sale en el idioma de tu Mac), no pide ningún permiso y no se conecta a internet.
+e inglés (sale en el idioma de tu Mac) y no pide ningún permiso. Su única conexión es una consulta diaria a
+GitHub para avisarte de versiones nuevas, que no envía nada tuyo y se puede desactivar.
 
-**Instalación:** descarga `RainDesktop-1.0.zip` de la [última versión](https://github.com/gonzaroman/RainDesktop/releases/latest), arrastra la
+**Instalación:** descarga `RainDesktop-1.1.zip` de la [última versión](https://github.com/gonzaroman/RainDesktop/releases/latest), arrastra la
 app a **Aplicaciones** y ábrela. Como no está notarizada por Apple, macOS mostrará un aviso: pulsa
 **Aceptar**, ve a **Ajustes del Sistema → Privacidad y seguridad** y pulsa **Abrir igualmente**. Solo hay que
 hacerlo la primera vez.

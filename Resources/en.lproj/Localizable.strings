@@ -1,7 +1,6 @@
 /* RainDesktop: la clave es el texto en inglés. */
 
 "RainDesktop — right-click to start or stop the rain" = "RainDesktop — right-click to start or stop the rain";
-"Rain behind your windows. It only uses their outlines: no permissions, no network." = "Rain behind your windows. It only uses their outlines: no permissions, no network.";
 "Intensity" = "Intensity";
 "Wind" = "Wind";
 "Bounce" = "Bounce";
@@ -33,3 +32,14 @@
 "soft" = "soft";
 "medium" = "medium";
 "strong" = "strong";
+"Rain behind your windows. It only uses their outlines and needs no permissions." = "Rain behind your windows. It only uses their outlines and needs no permissions.";
+"RainDesktop — update available" = "RainDesktop — update available";
+"Check now" = "Check now";
+"Version %@" = "Version %@";
+"Checking…" = "Checking…";
+"You're up to date (%@)" = "You're up to date (%@)";
+"Version %@ available" = "Version %@ available";
+"Couldn't check for updates" = "Couldn't check for updates";
+"Download" = "Download";
+"Check for updates" = "Check for updates";
+"Once a day, on GitHub." = "Once a day, on GitHub.";
