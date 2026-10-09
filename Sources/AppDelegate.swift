@@ -33,9 +33,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             button.target = self
             button.action = #selector(statusItemClicked(_:))
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
-            button.toolTip = "RainDesktop — clic derecho para empezar o parar la lluvia"
+            button.toolTip = L("RainDesktop — right-click to start or stop the rain")
         }
         updateStatusIcon()
+
+        if StudioMode.isActive {
+            Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+                StudioMode.announceStatusItem(self?.statusItem.button)
+            }
+        }
 
         // Para desarrollo: `open RainDesktop.app --args --show-panel` abre el panel al arrancar.
         if CommandLine.arguments.contains("--show-panel"), let button = statusItem.button {
@@ -67,6 +73,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // El panel se abre por debajo del icono (el botón puede tener coordenadas invertidas).
             popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: sender.isFlipped ? .maxY : .minY)
             popover.contentViewController?.view.window?.makeKey()
+            // Que no se abra con el campo del grosor seleccionado.
+            popover.contentViewController?.view.window?.makeFirstResponder(nil)
         }
     }
 
@@ -74,7 +82,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.performClose(nil)
         NSApp.activate()
         let credits = NSAttributedString(
-            string: "Lluvia detrás de tus ventanas. Solo usa su contorno: sin permisos y sin red.",
+            string: L("Rain behind your windows. It only uses their outlines: no permissions, no network."),
             attributes: [.font: NSFont.systemFont(ofSize: 11), .foregroundColor: NSColor.secondaryLabelColor]
         )
         NSApp.orderFrontStandardAboutPanel(options: [.credits: credits])

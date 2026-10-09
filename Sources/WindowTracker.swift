@@ -76,6 +76,7 @@ final class WindowTracker {
         // Quartz tiene el origen arriba-izquierda de la pantalla principal (la de la barra de menús);
         // Cocoa, abajo-izquierda de esa misma pantalla.
         let primaryHeight = CGDisplayBounds(CGMainDisplayID()).height
+        let screens = NSScreen.screens.map(\.frame)
 
         var result: [TrackedWindow] = []
         for info in list {
@@ -88,6 +89,12 @@ final class WindowTracker {
                   q.width >= 60, q.height >= 40 else { continue }
 
             let frame = CGRect(x: q.minX, y: primaryHeight - q.maxY, width: q.width, height: q.height)
+            if let studio = StudioMode.pid {
+                // En el estudio solo cuentan sus ventanas, y no su fondo, que ocupa la pantalla entera.
+                guard owner == studio,
+                      !screens.contains(where: { $0.insetBy(dx: -2, dy: -2).contains(frame) && frame.width >= $0.width - 4 })
+                else { continue }
+            }
             result.append(TrackedWindow(id: number, frame: frame))
             if result.count >= maxWindows { break }
         }

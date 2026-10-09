@@ -53,51 +53,51 @@ struct ControlPanel: View {
             header
             Divider()
 
-            SliderRow(title: "Intensidad", detail: Self.describeIntensity(model.settings.intensity),
+            SliderRow(title: L("Intensity"), detail: Self.describeIntensity(model.settings.intensity),
                       symbol: "cloud.rain", value: $model.settings.intensity, range: 0...1)
-            SliderRow(title: "Viento", detail: Self.describeWind(model.settings.wind),
+            SliderRow(title: L("Wind"), detail: Self.describeWind(model.settings.wind),
                       symbol: "wind", value: $model.settings.wind, range: -1...1)
-            SliderRow(title: "Rebote", detail: Self.describeBounce(model.settings.bounce),
+            SliderRow(title: L("Bounce"), detail: Self.describeBounce(model.settings.bounce),
                       symbol: "drop", value: $model.settings.bounce, range: 0...1)
-            NumberRow(title: "Grosor de los hilos", symbol: "line.3.horizontal.decrease",
+            NumberRow(title: L("Stream width"), symbol: "line.3.horizontal.decrease",
                       unit: "pt", value: $model.settings.streamWidth,
                       range: RainSettings.streamWidthRange, step: 0.5)
 
             Divider()
 
-            ToggleRow(title: "Sonido de lluvia", isOn: $model.settings.sound)
-            SliderRow(title: "Volumen", detail: "\(Int((model.settings.volume * 100).rounded())) %",
+            ToggleRow(title: L("Rain sound"), isOn: $model.settings.sound)
+            SliderRow(title: L("Volume"), detail: "\(Int((model.settings.volume * 100).rounded())) %",
                       symbol: "speaker.wave.2", value: $model.settings.volume, range: 0...1)
                 .disabled(!model.settings.sound)
                 .opacity(model.settings.sound ? 1 : 0.45)
 
             Divider()
 
-            ToggleRow(title: "Relámpagos y truenos", isOn: $model.settings.lightning)
-            ToggleRow(title: "Chocar con las ventanas", isOn: $model.settings.collide)
-            ToggleRow(title: "Rebotar también en los laterales",
-                      caption: "Se nota cuando hay viento.",
+            ToggleRow(title: L("Lightning and thunder"), isOn: $model.settings.lightning)
+            ToggleRow(title: L("Collide with windows"), isOn: $model.settings.collide)
+            ToggleRow(title: L("Also bounce off the sides"),
+                      caption: L("Noticeable when it's windy."),
                       isOn: $model.settings.sideCollide)
                 .disabled(!model.settings.collide)
                 .opacity(model.settings.collide ? 1 : 0.45)
-            ToggleRow(title: "Inundar cuando no uses el Mac",
-                      caption: "Al tocar el ratón o el teclado, el agua se va.",
+            ToggleRow(title: L("Flood when you're away"),
+                      caption: L("Touch the mouse or keyboard and the water drains."),
                       isOn: $model.settings.flood)
-            SliderRow(title: "Se llena en", detail: Self.describeMinutes(model.settings.floodMinutes),
+            SliderRow(title: L("Fills in"), detail: Self.describeMinutes(model.settings.floodMinutes),
                       symbol: "water.waves", value: $model.settings.floodMinutes,
                       range: RainSettings.floodMinutesRange)
                 .disabled(!model.settings.flood)
                 .opacity(model.settings.flood ? 1 : 0.45)
-            ToggleRow(title: "Abrir al iniciar sesión",
+            ToggleRow(title: L("Open at login"),
                       isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
 
             Divider()
 
             HStack {
-                Button("Acerca de RainDesktop", action: onAbout)
+                Button(L("About RainDesktop"), action: onAbout)
                     .buttonStyle(.borderless)
                 Spacer()
-                Button("Salir", action: onQuit)
+                Button(L("Quit"), action: onQuit)
                     .keyboardShortcut("q")
             }
             .controlSize(.small)
@@ -113,12 +113,12 @@ struct ControlPanel: View {
                 .frame(width: 30, height: 30)
             VStack(alignment: .leading, spacing: 1) {
                 Text("RainDesktop").font(.headline)
-                Text(model.settings.raining ? "Lloviendo" : "Sin lluvia")
+                Text(model.settings.raining ? L("Raining") : L("Not raining"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            Toggle("Lluvia", isOn: $model.settings.raining)
+            Toggle(L("Rain"), isOn: $model.settings.raining)
                 .toggleStyle(.switch)
                 .labelsHidden()
                 .keyboardShortcut("r")
@@ -127,19 +127,19 @@ struct ControlPanel: View {
 
     static func describeIntensity(_ v: Double) -> String {
         switch v {
-        case ..<0.15: return "llovizna"
-        case ..<0.35: return "ligera"
-        case ..<0.55: return "moderada"
-        case ..<0.75: return "fuerte"
-        case ..<0.9: return "tormenta"
-        default: return "diluvio"
+        case ..<0.15: return L("drizzle")
+        case ..<0.35: return L("light")
+        case ..<0.55: return L("moderate")
+        case ..<0.75: return L("heavy")
+        case ..<0.9: return L("storm")
+        default: return L("downpour")
         }
     }
 
     static func describeWind(_ v: Double) -> String {
         let a = abs(v)
-        if a < 0.05 { return "calma" }
-        let name = a < 0.45 ? "brisa" : "ventoso"
+        if a < 0.05 { return L("calm") }
+        let name = a < 0.45 ? L("breeze") : L("windy")
         return name + (v > 0 ? " →" : " ←")
     }
 
@@ -151,7 +151,7 @@ struct ControlPanel: View {
     }
 
     static func describeBounce(_ v: Double) -> String {
-        v < 0.34 ? "suave" : v < 0.67 ? "medio" : "fuerte"
+        v < 0.34 ? L("soft") : v < 0.67 ? L("medium") : L("strong")
     }
 }
 

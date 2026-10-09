@@ -47,24 +47,35 @@ enum SettingsStore {
 
     static func load() -> RainSettings {
         var s = RainSettings()
-        s.raining = defaults.object(forKey: Key.raining) as? Bool ?? s.raining
-        s.intensity = clamp(defaults.object(forKey: Key.intensity) as? Double ?? s.intensity, 0, 1)
-        s.wind = clamp(defaults.object(forKey: Key.wind) as? Double ?? s.wind, -1, 1)
-        s.bounce = clamp(defaults.object(forKey: Key.bounce) as? Double ?? s.bounce, 0, 1)
-        s.lightning = defaults.object(forKey: Key.lightning) as? Bool ?? s.lightning
-        s.collide = defaults.object(forKey: Key.collide) as? Bool ?? s.collide
-        s.sideCollide = defaults.object(forKey: Key.sideCollide) as? Bool ?? s.sideCollide
-        s.streamWidth = clamp(defaults.object(forKey: Key.streamWidth) as? Double ?? s.streamWidth,
-                              RainSettings.streamWidthRange.lowerBound, RainSettings.streamWidthRange.upperBound)
-        s.flood = defaults.object(forKey: Key.flood) as? Bool ?? s.flood
-        s.floodMinutes = clamp(defaults.object(forKey: Key.floodMinutes) as? Double ?? s.floodMinutes,
-                               RainSettings.floodMinutesRange.lowerBound, RainSettings.floodMinutesRange.upperBound)
-        s.sound = defaults.object(forKey: Key.sound) as? Bool ?? s.sound
-        s.volume = clamp(defaults.object(forKey: Key.volume) as? Double ?? s.volume, 0, 1)
+        s.raining = bool(Key.raining, s.raining)
+        s.intensity = double(Key.intensity, s.intensity, 0...1)
+        s.wind = double(Key.wind, s.wind, -1...1)
+        s.bounce = double(Key.bounce, s.bounce, 0...1)
+        s.lightning = bool(Key.lightning, s.lightning)
+        s.collide = bool(Key.collide, s.collide)
+        s.sideCollide = bool(Key.sideCollide, s.sideCollide)
+        s.streamWidth = double(Key.streamWidth, s.streamWidth, RainSettings.streamWidthRange)
+        s.flood = bool(Key.flood, s.flood)
+        s.floodMinutes = double(Key.floodMinutes, s.floodMinutes, RainSettings.floodMinutesRange)
+        s.sound = bool(Key.sound, s.sound)
+        s.volume = double(Key.volume, s.volume, 0...1)
         return s
     }
 
+    // `bool(forKey:)` y `double(forKey:)` también leen los argumentos de lanzamiento (`-intensity 0.7`),
+    // que llegan como texto.
+    private static func bool(_ key: String, _ fallback: Bool) -> Bool {
+        defaults.object(forKey: key) == nil ? fallback : defaults.bool(forKey: key)
+    }
+
+    private static func double(_ key: String, _ fallback: Double, _ range: ClosedRange<Double>) -> Double {
+        let value = defaults.object(forKey: key) == nil ? fallback : defaults.double(forKey: key)
+        return min(max(value, range.lowerBound), range.upperBound)
+    }
+
     static func save(_ s: RainSettings) {
+        // En el estudio de capturas no se toca nada de lo que el usuario tiene guardado.
+        guard !StudioMode.isActive else { return }
         defaults.set(s.raining, forKey: Key.raining)
         defaults.set(s.intensity, forKey: Key.intensity)
         defaults.set(s.wind, forKey: Key.wind)
@@ -77,9 +88,5 @@ enum SettingsStore {
         defaults.set(s.floodMinutes, forKey: Key.floodMinutes)
         defaults.set(s.sound, forKey: Key.sound)
         defaults.set(s.volume, forKey: Key.volume)
-    }
-
-    private static func clamp(_ v: Double, _ lo: Double, _ hi: Double) -> Double {
-        min(max(v, lo), hi)
     }
 }

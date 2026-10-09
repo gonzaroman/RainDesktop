@@ -2,6 +2,7 @@
 # Compila RainDesktop como app universal, la firma y la instala en ~/Applications.
 #   ./build.sh               compila, instala y abre
 #   ./build.sh --no-install  solo compila en build/RainDesktop.app
+#   ./build.sh --release     compila y empaqueta releases/RainDesktop-<versión>.zip (firma intacta)
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -23,6 +24,7 @@ lipo -create "$BUILD/$APP-arm64" "$BUILD/$APP-x86_64" -output "$BUNDLE/Contents/
 rm "$BUILD/$APP-arm64" "$BUILD/$APP-x86_64"
 cp Info.plist "$BUNDLE/Contents/Info.plist"
 cp Resources/AppIcon.icns "$BUNDLE/Contents/Resources/AppIcon.icns"
+cp -R Resources/*.lproj "$BUNDLE/Contents/Resources/"
 
 echo "→ Firmando"
 codesign --force --sign - --options runtime --entitlements "$APP.entitlements" "$BUNDLE"
@@ -30,6 +32,17 @@ codesign --verify --strict --verbose=2 "$BUNDLE"
 
 if [[ "${1:-}" == "--no-install" ]]; then
     echo "✓ $BUNDLE"
+    exit 0
+fi
+
+if [[ "${1:-}" == "--release" ]]; then
+    VERSION=$(defaults read "$PWD/Info.plist" CFBundleShortVersionString)
+    mkdir -p releases
+    ZIP="releases/$APP-$VERSION.zip"
+    rm -f "$ZIP"
+    # ditto conserva la firma; comprimir de otra forma puede romperla y macOS diría que la app está dañada.
+    ditto -c -k --keepParent "$BUNDLE" "$ZIP"
+    echo "✓ $ZIP"
     exit 0
 fi
 
