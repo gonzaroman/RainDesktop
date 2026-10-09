@@ -238,11 +238,12 @@ final class RainSimulation {
         abs(wind) * Self.windSlope * size.height + 80
     }
 
-    /// Escala exponencial: 0 ≈ 60 gotas (llovizna), 0,5 ≈ 380, 1 ≈ 2.400 (diluvio), en una pantalla de 14".
+    /// Escala exponencial, en una pantalla de 14": llovizna ≈ 250 gotas, ligera ≈ 440, moderada ≈ 700,
+    /// fuerte ≈ 1.100, tormenta ≈ 1.600 y diluvio ≈ 2.400.
     private func targetDropCount() -> Int {
         let area = size.width * size.height
         let scale = min(max(area / Self.referenceArea, 0.6), 2.5)
-        return min(Int(60 * pow(40, intensity) * scale), Self.maxDrops)
+        return min(Int(250 * pow(9.6, intensity) * scale), Self.maxDrops)
     }
 
     private func syncDropCount() {
