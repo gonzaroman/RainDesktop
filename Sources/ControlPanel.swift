@@ -92,6 +92,11 @@ struct ControlPanel: View {
                       range: RainSettings.floodMinutesRange)
                 .disabled(!model.settings.flood)
                 .opacity(model.settings.flood ? 1 : 0.45)
+            ToggleRow(title: L("Fish in the flood"), isOn: $model.settings.fish)
+                .disabled(!model.settings.flood)
+                .opacity(model.settings.flood ? 1 : 0.45)
+            ToggleRow(title: L("People with umbrellas"), caption: L("They walk on top of your windows."),
+                      isOn: $model.settings.walkers)
             ToggleRow(title: L("Open at login"),
                       isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
             ToggleRow(title: L("Check for updates"), caption: L("Once a day, on GitHub."),

@@ -12,6 +12,7 @@ final class RainRenderer {
         case ring = 2      // centro a, radios b, grosor `width`
         case fullscreen = 3
         case water = 4     // a = (nivel, tiempo), b.y = altura de las olas
+        case dome = 5      // mitad superior de la elipse de centro a y radios b (un paraguas)
     }
 
     /// Mismo diseño de memoria que `Instance` en el shader (32 bytes).
@@ -210,6 +211,8 @@ final class RainRenderer {
             d = (length((p - s.a) / s.b) - 1.0) * min(s.b.x, s.b.y);
         } else if (s.kind == 2) {
             d = abs((length((p - s.a) / s.b) - 1.0) * min(s.b.x, s.b.y)) - s.width * 0.5;
+        } else if (s.kind == 5) {
+            d = max((length((p - s.a) / s.b) - 1.0) * min(s.b.x, s.b.y), s.a.y - p.y);
         } else {
             d = -1.0;
         }

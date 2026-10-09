@@ -151,6 +151,12 @@ final class RainSimulation {
 
     func frame(of id: UInt32) -> CGRect? { frames[id] }
 
+    /// Salpicadura suelta, por ejemplo la de un monigote que cae al agua.
+    func addSplash(x: CGFloat, y: CGFloat, onWater: Bool) {
+        guard splashes.count < Self.maxSplashes else { return }
+        splashes.append(Splash(x: x, y: y, window: nil, age: 0, onWater: onWater))
+    }
+
     // MARK: - Ventanas
 
     /// Recibe las ventanas de delante a atrás. El agua posada sobre una ventana se desplaza con ella;

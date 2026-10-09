@@ -21,6 +21,10 @@ struct RainSettings: Equatable {
     var flood = false
     /// Minutos que tarda en llenarse la pantalla.
     var floodMinutes = 1.0
+    /// Peces nadando en el agua de la inundación.
+    var fish = true
+    /// Monigotes con paraguas que caminan por encima de las ventanas.
+    var walkers = true
     var sound = true
     /// Comprobar una vez al día si hay una versión nueva en GitHub.
     var checkUpdates = true
@@ -43,6 +47,8 @@ enum SettingsStore {
         static let streamWidth = "streamWidth"
         static let flood = "flood"
         static let floodMinutes = "floodMinutes"
+        static let fish = "fish"
+        static let walkers = "walkers"
         static let sound = "sound"
         static let checkUpdates = "checkUpdates"
         static let volume = "volume"
@@ -60,6 +66,8 @@ enum SettingsStore {
         s.streamWidth = double(Key.streamWidth, s.streamWidth, RainSettings.streamWidthRange)
         s.flood = bool(Key.flood, s.flood)
         s.floodMinutes = double(Key.floodMinutes, s.floodMinutes, RainSettings.floodMinutesRange)
+        s.fish = bool(Key.fish, s.fish)
+        s.walkers = bool(Key.walkers, s.walkers)
         s.sound = bool(Key.sound, s.sound)
         s.checkUpdates = bool(Key.checkUpdates, s.checkUpdates)
         s.volume = double(Key.volume, s.volume, 0...1)
@@ -90,6 +98,8 @@ enum SettingsStore {
         defaults.set(s.streamWidth, forKey: Key.streamWidth)
         defaults.set(s.flood, forKey: Key.flood)
         defaults.set(s.floodMinutes, forKey: Key.floodMinutes)
+        defaults.set(s.fish, forKey: Key.fish)
+        defaults.set(s.walkers, forKey: Key.walkers)
         defaults.set(s.sound, forKey: Key.sound)
         defaults.set(s.checkUpdates, forKey: Key.checkUpdates)
         defaults.set(s.volume, forKey: Key.volume)
