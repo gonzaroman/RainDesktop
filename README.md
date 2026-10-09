@@ -24,7 +24,11 @@
 - **Water that flows.** Water collects on top of each window, runs to the edges, trickles down the sides
   and keeps dripping below.
 - **Flood mode.** Leave your Mac alone and the water rises, with waves, light caustics and bubbles. Touch
-  the mouse or keyboard and it drains in a second.
+  the mouse or keyboard and it drains in a second. Fish swim in once it's deep enough.
+- **People with umbrellas.** Little figures float down from the sky, stroll along the top of your windows and
+  drift down with their umbrellas when they reach a corner, landing on another window or in the water.
+- **Mafia mode.** An invincible man in a black suit takes on wave after wave of gangsters, with flips,
+  flying kicks and two pistols. See [below](#mafia-mode).
 - **Rain sound.** Synthesized in real time (no audio files), it follows the intensity and adds thunder after
   each flash of lightning. It mutes itself while another app is using the microphone, for example during a call.
 - **Control panel** in the menu bar: intensity from drizzle to downpour, wind in both directions, bounce,
@@ -40,6 +44,23 @@
 <p align="center">
   <img src="docs/screenshots/panel.png" width="320" alt="The control panel in the menu bar">
 </p>
+
+## Mafia mode
+
+Turn on **Mafia mode** in the panel and a man in a black suit drops onto your windows to fight off wave
+after wave of gangsters in fedoras. They slide down ropes from the menu bar and leap in from the sides; he
+flips between windows, rolls under their bullets, fires two pistols in mid-air and sends them flying with
+flying kicks. Each wave is bigger than the last.
+
+![The hero flipping in mid-air while firing, a gangster flying off a window and another sliding down a rope](docs/screenshots/mafia.png)
+
+When the screen floods, the gangsters arrive by speedboat. The hero can't walk on water: he swims to the
+nearest boat, leaps aboard, throws the crew overboard and takes the wheel. Enough bullets sink a boat.
+
+![The hero firing from his boat at a boat full of gangsters, with fish swimming below](docs/screenshots/mafia-boats.png)
+
+It's all cartoon violence (no blood), it's off by default, and it replaces the people with umbrellas
+while it's on.
 
 ## Privacy
 
@@ -57,7 +78,7 @@ RainDesktop asks for **no permissions**, and its only network connection is the 
 
 ## Install
 
-1. Download `RainDesktop-1.1.zip` from the [latest release](https://github.com/gonzaroman/RainDesktop/releases/latest) and open it.
+1. Download `RainDesktop-1.2.zip` from the [latest release](https://github.com/gonzaroman/RainDesktop/releases/latest) and open it.
 2. Drag **RainDesktop.app** to your **Applications** folder.
 3. Open it. macOS will say it can't check the app for malicious software, because it isn't notarized by
    Apple. Click **Done** (not *Move to Trash*).
@@ -90,16 +111,20 @@ An app built on your own Mac opens without any Gatekeeper warning.
 - `RainRenderer` draws everything in one instanced Metal draw call. Each shape knows which windows are in front
   of it, and the shader hides the parts covered by them, so rain can land on one window and disappear behind
   another.
+- `Creatures` and `MafiaFight` move the characters; `FigureBrush` draws each one twice, first slightly
+  thicker in black and then filled on top, so they get an outline in the same draw call.
 - `Tools/Studio` builds a fictional desktop to take the screenshots in this README without showing anyone's files.
 
 ## Español
 
 **RainDesktop** pone lluvia detrás de tus ventanas en macOS: las gotas rebotan en las barras de título, el
-agua baja por los laterales y, si dejas el Mac un rato sin tocar, se va inundando. La app está en español
+agua baja por los laterales y, si dejas el Mac un rato sin tocar, se va inundando (con peces). Por encima
+de las ventanas pasean monigotes con paraguas y, si activas el **Modo Mafia**, un tipo trajeado se enfrenta a
+oleadas de mafiosos que bajan en cuerda o llegan en lancha cuando se inunda la pantalla. La app está en español
 e inglés (sale en el idioma de tu Mac) y no pide ningún permiso. Su única conexión es una consulta diaria a
 GitHub para avisarte de versiones nuevas, que no envía nada tuyo y se puede desactivar.
 
-**Instalación:** descarga `RainDesktop-1.1.zip` de la [última versión](https://github.com/gonzaroman/RainDesktop/releases/latest), arrastra la
+**Instalación:** descarga `RainDesktop-1.2.zip` de la [última versión](https://github.com/gonzaroman/RainDesktop/releases/latest), arrastra la
 app a **Aplicaciones** y ábrela. Como no está notarizada por Apple, macOS mostrará un aviso: pulsa
 **Aceptar**, ve a **Ajustes del Sistema → Privacidad y seguridad** y pulsa **Abrir igualmente**. Solo hay que
 hacerlo la primera vez.
