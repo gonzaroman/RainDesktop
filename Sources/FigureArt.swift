@@ -7,7 +7,8 @@ extension FigureBrush {
     mutating func walker(_ w: Creatures.Walker, wind: CGFloat, time: CGFloat) {
         var walking = false
         if case .walking = w.state { walking = true }
-        place(at: CGPoint(x: w.x, y: w.y))
+        let k = Self.figureScale
+        place(at: CGPoint(x: w.x, y: w.y), scale: k)
         let d = w.direction
 
         // Piernas: andando se balancean; colgando, casi juntas.
@@ -26,7 +27,7 @@ extension FigureBrush {
         let top = CGPoint(x: hand.x + tilt, y: 30)
         let radii = walking ? CGPoint(x: 12, y: 7) : CGPoint(x: 13.5, y: 8.5)
         segment(CGPoint(x: hand.x, y: hand.y - 1.5), top, width: 0.9)
-        worldDome(world(top), radii)
+        worldDome(world(top), CGPoint(x: radii.x * k, y: radii.y * k))
         segment(CGPoint(x: top.x, y: top.y + radii.y), CGPoint(x: top.x, y: top.y + radii.y + 2.5), width: 1)
     }
 
@@ -194,13 +195,14 @@ extension FigureBrush {
         }
 
         if f.hero {
-            // Corbata y melena negra peinada hacia atrás.
+            // Se pinta invertido (negro con borde claro): la corbata sale clara, como la camisa,
+            // y la melena peinada hacia atrás lleva su propio borde.
             segment(CGPoint(x: p.neck.x + 0.3, y: p.neck.y - 0.6), CGPoint(x: p.neck.x + 0.8, y: p.neck.y - 4.6),
                     width: 1.1, style: .ink)
             segment(CGPoint(x: head.x + 0.6, y: head.y + 2.5), CGPoint(x: head.x - 2.6, y: head.y + 2.2),
-                    width: 1.7, style: .ink)
+                    width: 1.7)
             segment(CGPoint(x: head.x - 0.5, y: head.y + 2.3), CGPoint(x: head.x - 3.8, y: head.y - 0.2),
-                    width: 1.8, style: .ink)
+                    width: 1.8)
         } else {
             // Sombrero de ala y gafas oscuras.
             segment(CGPoint(x: head.x - 4.2, y: head.y + 2.3), CGPoint(x: head.x + 4.2, y: head.y + 2.3), width: 1.2)
@@ -241,11 +243,12 @@ extension FigureBrush {
 
     /// Lancha: casco en cuenco, borda, proa levantada, parabrisas y motor fuera borda.
     mutating func boat(_ b: MafiaFight.Boat, deck y: CGFloat) {
-        let x = b.x, fc = b.facing
-        worldDome(CGPoint(x: x, y: y), CGPoint(x: 34, y: 11), flipped: true)
-        worldSegment(CGPoint(x: x - 36, y: y + 0.5), CGPoint(x: x + 36, y: y + 0.5), width: 2.2)
-        worldSegment(CGPoint(x: x + fc * 34, y: y), CGPoint(x: x + fc * 41, y: y + 5), width: 2)
-        worldSegment(CGPoint(x: x + fc * 12, y: y + 1), CGPoint(x: x + fc * 17, y: y + 10), width: 1.2)
-        worldSegment(CGPoint(x: x - fc * 35, y: y - 2), CGPoint(x: x - fc * 39, y: y + 9), width: 3.2)
+        let k = MafiaFight.boatScale
+        let x = b.x, fc = b.facing * k
+        worldDome(CGPoint(x: x, y: y), CGPoint(x: 34 * k, y: 11 * k), flipped: true)
+        worldSegment(CGPoint(x: x - 36 * k, y: y + 0.5), CGPoint(x: x + 36 * k, y: y + 0.5), width: 2.2 * k)
+        worldSegment(CGPoint(x: x + fc * 34, y: y), CGPoint(x: x + fc * 41, y: y + 5 * k), width: 2 * k)
+        worldSegment(CGPoint(x: x + fc * 12, y: y + 1), CGPoint(x: x + fc * 17, y: y + 10 * k), width: 1.2 * k)
+        worldSegment(CGPoint(x: x - fc * 35, y: y - 2 * k), CGPoint(x: x - fc * 39, y: y + 9 * k), width: 3.2 * k)
     }
 }

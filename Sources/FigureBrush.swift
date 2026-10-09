@@ -27,6 +27,8 @@ struct FigureBrush {
 
     /// Grosor del borde negro, en puntos.
     static let outline: CGFloat = 1.0
+    /// Tamaño de todos los personajes respecto al diseño original.
+    static let figureScale: CGFloat = 1.2
 
     private var parts: [Part] = []
     private var base = CGPoint.zero
@@ -81,20 +83,23 @@ struct FigureBrush {
                           flags: flipped ? RainRenderer.Flag.flipped : 0, style: .outlined))
     }
 
-    /// Pinta lo acumulado y vacía el pincel.
-    mutating func flush(into instances: inout [RainRenderer.Instance], alpha: CGFloat, depth: UInt32) {
+    /// Pinta lo acumulado y vacía el pincel. Con `inverted`, el relleno es negro y el borde claro
+    /// (y los detalles en negro pasan a claros).
+    mutating func flush(into instances: inout [RainRenderer.Instance], alpha: CGFloat, depth: UInt32,
+                        inverted: Bool = false) {
         defer { parts.removeAll(keepingCapacity: true) }
         guard alpha > 0.004 else { return }
-        let o = Self.outline
+        // El borde claro sobre negro se lee peor: algo más grueso.
+        let o = inverted ? Self.outline * 1.6 : Self.outline
         func emit(_ kind: RainRenderer.Kind, _ a: CGPoint, _ b: CGPoint, _ width: CGFloat, _ alpha: CGFloat,
                   _ flags: UInt32) {
             instances.append(RainRenderer.Instance(
                 a: SIMD2(Float(a.x), Float(a.y)), b: SIMD2(Float(b.x), Float(b.y)),
                 width: Float(width), alpha: Float(min(alpha, 1)), kind: kind.rawValue | flags, depth: depth))
         }
-        // Borde: cada pieza en negro, un poco más grande.
+        // Borde: cada pieza en negro (o en claro, invertido), un poco más grande.
         for p in parts where p.style == .outlined {
-            let ink = p.flags | RainRenderer.Flag.ink
+            let ink = inverted ? p.flags : p.flags | RainRenderer.Flag.ink
             switch p.kind {
             case .ellipse:
                 emit(.ellipse, p.a, CGPoint(x: p.b.x + o, y: p.b.y + o), 0, alpha * 0.9, ink)
@@ -107,9 +112,10 @@ struct FigureBrush {
                 emit(p.kind, p.a, p.b, p.width + 2 * o, alpha * 0.9, ink)
             }
         }
-        // Relleno claro y detalles en negro, en el orden en que se dieron.
+        // Relleno claro y detalles en negro (al revés si está invertido), en el orden en que se dieron.
         for p in parts {
-            let flags = p.style == .ink ? p.flags | RainRenderer.Flag.ink : p.flags
+            let dark = p.style == .glow ? false : (p.style == .ink) != inverted
+            let flags = dark ? p.flags | RainRenderer.Flag.ink : p.flags
             emit(p.kind, p.a, p.b, p.width, p.style == .ink ? alpha * 0.95 : alpha, flags)
         }
     }

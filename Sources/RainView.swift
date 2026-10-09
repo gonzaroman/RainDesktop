@@ -356,7 +356,7 @@ final class RainView: NSView {
         for f in mafia.fighters {
             if case .boat? = f.ground { continue }
             brush.fighter(f, time: sim.time)
-            brush.flush(into: &instances, alpha: 0.95 * f.alpha, depth: depth(of: f.layer))
+            brush.flush(into: &instances, alpha: 0.95 * f.alpha, depth: depth(of: f.layer), inverted: f.hero)
         }
         for b in mafia.bullets {
             brush.bullet(b)
@@ -365,7 +365,7 @@ final class RainView: NSView {
         for b in mafia.boats {
             for f in mafia.fighters where f.ground == .boat(b.id) {
                 brush.fighter(f, time: sim.time)
-                brush.flush(into: &instances, alpha: 0.95 * f.alpha * b.alpha, depth: 0)
+                brush.flush(into: &instances, alpha: 0.95 * f.alpha * b.alpha, depth: 0, inverted: f.hero)
             }
             brush.boat(b, deck: mafia.deck(of: b))
             brush.flush(into: &instances, alpha: 0.95 * b.alpha, depth: 0)

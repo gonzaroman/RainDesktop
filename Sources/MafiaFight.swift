@@ -84,7 +84,7 @@ final class MafiaFight {
         var splashIn: CGFloat = 0
 
         var dead: Bool { move == .knocked || move == .sinking }
-        var scale: CGFloat { hero ? MafiaFight.heroScale : 1 }
+        var scale: CGFloat { hero ? MafiaFight.heroScale : MafiaFight.enemyScale }
         /// Centro del cuerpo, para los disparos.
         var center: CGPoint { CGPoint(x: x, y: y + 12 * scale) }
         var shoulder: CGPoint { CGPoint(x: x, y: y + 16 * scale) }
@@ -114,7 +114,10 @@ final class MafiaFight {
         var facing: CGFloat { vx >= 0 ? 1 : -1 }
     }
 
-    static let heroScale: CGFloat = 1.15
+    /// Tamaños respecto al diseño original: todos un 20 % más grandes y el protagonista algo más.
+    static let enemyScale: CGFloat = FigureBrush.figureScale
+    static let heroScale: CGFloat = 1.15 * FigureBrush.figureScale
+    static let boatScale: CGFloat = FigureBrush.figureScale
     static let gravity: CGFloat = 1500
     private static let bulletSpeed: CGFloat = 1600
     private static let maxAlive = 18
@@ -265,7 +268,7 @@ final class MafiaFight {
         for k in 0..<crew {
             var e = makeEnemy(x: boat.x, y: sim.waterLevel, move: .stand)
             e.ground = .boat(boat.id)
-            e.offset = CGFloat(k) * 15 - 15
+            e.offset = (CGFloat(k) * 15 - 15) * Self.boatScale
             e.facing = boat.facing
             e.layer = .front
             fighters.append(e)
@@ -419,7 +422,7 @@ final class MafiaFight {
                 land(&f, on: .window(id), frame: fr)
             } else if f.hero, f.vy < 0, let b = boats.first(where: { b in
                 let d = deck(of: b)
-                return b.sinking < 0 && abs(f.x - b.x) < 38 && py >= d && f.y < d
+                return b.sinking < 0 && abs(f.x - b.x) < 38 * Self.boatScale && py >= d && f.y < d
             }) {
                 board(&f, b)
             } else if f.vy < 0, sim.waterLevel <= 1, f.y <= 0 {
@@ -484,7 +487,7 @@ final class MafiaFight {
             return
         case .boat(let id):
             let bx = boats.first { $0.id == id }?.x ?? f.x
-            f.offset = min(max(f.x - bx, -18), 18)
+            f.offset = min(max(f.x - bx, -18 * Self.boatScale), 18 * Self.boatScale)
             f.layer = .front
         case .floor:
             f.offset = f.x
@@ -572,7 +575,7 @@ final class MafiaFight {
             break
         }
         // En una lancha va donde la lleve la lancha.
-        if case .boat = f.ground { f.offset = min(max(f.offset, -18), 18) }
+        if case .boat = f.ground { f.offset = min(max(f.offset, -18 * Self.boatScale), 18 * Self.boatScale) }
 
         // Al salirse por el borde de la ventana, cae.
         if case .window = f.ground, !follow(&f) {
@@ -822,7 +825,8 @@ final class MafiaFight {
                 if let k = boats.indices.first(where: { k in
                     let boat = boats[k]
                     let d = deck(of: boat)
-                    return boat.sinking < 0 && !heroAboard(boat.id) && abs(q.x - boat.x) < 34 && q.y < d && q.y > d - 12
+                    return boat.sinking < 0 && !heroAboard(boat.id) && abs(q.x - boat.x) < 34 * Self.boatScale
+                        && q.y < d && q.y > d - 12 * Self.boatScale
                 }) {
                     boats[k].health -= 1
                     sim.addSplash(x: q.x, y: deck(of: boats[k]) - 3, onWater: true)
@@ -933,7 +937,7 @@ final class MafiaFight {
             b.wake -= dt
             if b.wake <= 0 {
                 b.wake = 0.08
-                sim.addSplash(x: b.x - b.facing * 38, y: sim.waterLevel, onWater: true)
+                sim.addSplash(x: b.x - b.facing * 38 * Self.boatScale, y: sim.waterLevel, onWater: true)
             }
             boats[k] = b
         }

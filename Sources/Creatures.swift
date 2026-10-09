@@ -210,7 +210,7 @@ final class Creatures {
         let target = water > 80 ? min(Self.maxFish, Int(water / 110 * max(0.6, width / 1512))) : 0
         if fish.count < target, CGFloat.random(in: 0...1) < dt * 0.8 {
             let heading: CGFloat = Bool.random() ? 1 : -1
-            let size = CGFloat.random(in: 9...16)
+            let size = CGFloat.random(in: 9...16) * FigureBrush.figureScale
             let speed = CGFloat.random(in: 30...70)
             let depth = CGFloat.random(in: 0.15...0.85)
             fish.append(Fish(
