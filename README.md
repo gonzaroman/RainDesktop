@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="../../releases/latest"><b>Download</b></a> ·
+  <a href="https://github.com/gonzaroman/RainDesktop/releases/latest"><b>Download</b></a> ·
   macOS 14 Sonoma or later · Apple silicon &amp; Intel · English / Español
 </p>
 
@@ -53,7 +53,7 @@ RainDesktop asks for **no permissions** and makes **no network connections**.
 
 ## Install
 
-1. Download `RainDesktop-1.0.zip` from the [latest release](../../releases/latest) and open it.
+1. Download `RainDesktop-1.0.zip` from the [latest release](https://github.com/gonzaroman/RainDesktop/releases/latest) and open it.
 2. Drag **RainDesktop.app** to your **Applications** folder.
 3. Open it. macOS will say it can't check the app for malicious software, because it isn't notarized by
    Apple. Click **Done** (not *Move to Trash*).
@@ -94,7 +94,7 @@ An app built on your own Mac opens without any Gatekeeper warning.
 agua baja por los laterales y, si dejas el Mac un rato sin tocar, se va inundando. La app está en español
 e inglés (sale en el idioma de tu Mac), no pide ningún permiso y no se conecta a internet.
 
-**Instalación:** descarga `RainDesktop-1.0.zip` de la [última versión](../../releases/latest), arrastra la
+**Instalación:** descarga `RainDesktop-1.0.zip` de la [última versión](https://github.com/gonzaroman/RainDesktop/releases/latest), arrastra la
 app a **Aplicaciones** y ábrela. Como no está notarizada por Apple, macOS mostrará un aviso: pulsa
 **Aceptar**, ve a **Ajustes del Sistema → Privacidad y seguridad** y pulsa **Abrir igualmente**. Solo hay que
 hacerlo la primera vez.
