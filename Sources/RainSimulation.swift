@@ -151,6 +151,16 @@ final class RainSimulation {
 
     func frame(of id: UInt32) -> CGRect? { frames[id] }
 
+    /// Altura de las olas de la inundación: más altas cuanto más llueve, casi planas al empezar a subir.
+    var waveAmplitude: CGFloat { min(waterLevel * 0.5, 3 + 5 * intensity) }
+
+    /// Altura de la superficie del agua en `x`, con las mismas olas que pinta el shader.
+    func waterSurface(at x: CGFloat) -> CGFloat {
+        let t = Double(time), x = Double(x)
+        let wave = 0.6 * sin(x * 0.012 + t * 1.3) + 0.3 * sin(x * 0.031 - t * 2.1) + 0.1 * sin(x * 0.070 + t * 3.3)
+        return waterLevel + waveAmplitude * CGFloat(wave)
+    }
+
     /// Salpicadura suelta, por ejemplo la de un monigote que cae al agua.
     func addSplash(x: CGFloat, y: CGFloat, onWater: Bool) {
         guard splashes.count < Self.maxSplashes else { return }

@@ -15,6 +15,14 @@ final class RainRenderer {
         case dome = 5      // mitad superior de la elipse de centro a y radios b (un paraguas)
     }
 
+    /// Bits de `Instance.kind` por encima de la forma.
+    enum Flag {
+        /// Pinta en negro en vez del color de la lluvia (bordes de los personajes).
+        static let ink: UInt32 = 1 << 8
+        /// `dome` boca abajo: la mitad inferior de la elipse (el casco de una lancha).
+        static let flipped: UInt32 = 1 << 9
+    }
+
     /// Mismo diseño de memoria que `Instance` en el shader (32 bytes).
     struct Instance {
         var a: SIMD2<Float>
@@ -143,16 +151,18 @@ final class RainRenderer {
     };
 
     constant float3 tint = float3(0.86, 0.91, 1.0);
+    constant float3 ink = float3(0.02, 0.02, 0.05);
 
     vertex VOut rain_vertex(uint vid [[vertex_id]], uint iid [[instance_id]],
                             const device Instance* inst [[buffer(0)]],
                             constant Uniforms& u [[buffer(1)]]) {
         Instance s = inst[iid];
+        uint kind = s.kind & 0xFFu;
         float pad = 1.5 / u.scale + s.width;
         float2 lo, hi;
-        if (s.kind == 0) { lo = min(s.a, s.b) - pad; hi = max(s.a, s.b) + pad; }
-        else if (s.kind == 3) { lo = float2(0.0); hi = u.viewport; }
-        else if (s.kind == 4) { lo = float2(0.0); hi = float2(u.viewport.x, s.a.x + s.b.y * 2.0 + pad); }
+        if (kind == 0) { lo = min(s.a, s.b) - pad; hi = max(s.a, s.b) + pad; }
+        else if (kind == 3) { lo = float2(0.0); hi = u.viewport; }
+        else if (kind == 4) { lo = float2(0.0); hi = float2(u.viewport.x, s.a.x + s.b.y * 2.0 + pad); }
         else { lo = s.a - s.b - pad; hi = s.a + s.b + pad; }
         float2 p = mix(lo, hi, float2(float(vid & 1), float(vid >> 1)));
         VOut o;
@@ -174,12 +184,13 @@ final class RainRenderer {
                                   constant Uniforms& u [[buffer(1)]],
                                   constant Shape* shapes [[buffer(2)]]) {
         Instance s = inst[in.iid];
+        uint kind = s.kind & 0xFFu;
         float2 p = in.p;
         uint depth = min(s.depth, u.shapeCount);
         for (uint i = 0; i < depth; i++) {
             if (roundedRectDistance(p, shapes[i].rect, shapes[i].params.x) < 0.0) discard_fragment();
         }
-        if (s.kind == 4) {
+        if (kind == 4) {
             // Agua: superficie con tres trenes de olas, color según la profundidad,
             // reflejos (cáusticas) en movimiento y una franja brillante en la superficie.
             float t = s.a.y;
@@ -203,22 +214,23 @@ final class RainRenderer {
             return float4(col * a, a);
         }
         float d;
-        if (s.kind == 0) {
+        if (kind == 0) {
             float2 ba = s.b - s.a;
             float t = clamp(dot(p - s.a, ba) / max(dot(ba, ba), 1e-4), 0.0, 1.0);
             d = length(p - s.a - ba * t) - s.width * 0.5;
-        } else if (s.kind == 1) {
+        } else if (kind == 1) {
             d = (length((p - s.a) / s.b) - 1.0) * min(s.b.x, s.b.y);
-        } else if (s.kind == 2) {
+        } else if (kind == 2) {
             d = abs((length((p - s.a) / s.b) - 1.0) * min(s.b.x, s.b.y)) - s.width * 0.5;
-        } else if (s.kind == 5) {
-            d = max((length((p - s.a) / s.b) - 1.0) * min(s.b.x, s.b.y), s.a.y - p.y);
+        } else if (kind == 5) {
+            float cut = (s.kind & 512u) != 0u ? p.y - s.a.y : s.a.y - p.y;
+            d = max((length((p - s.a) / s.b) - 1.0) * min(s.b.x, s.b.y), cut);
         } else {
             d = -1.0;
         }
         float a = s.alpha * clamp(0.5 - d * u.scale, 0.0, 1.0);
         if (a < 0.002) discard_fragment();
-        float3 color = s.kind == 3 ? float3(1.0) : tint;
+        float3 color = kind == 3 ? float3(1.0) : ((s.kind & 256u) != 0u ? ink : tint);
         return float4(color * a, a);
     }
     """

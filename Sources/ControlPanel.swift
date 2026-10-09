@@ -97,6 +97,10 @@ struct ControlPanel: View {
                 .opacity(model.settings.flood ? 1 : 0.45)
             ToggleRow(title: L("People with umbrellas"), caption: L("They walk on top of your windows."),
                       isOn: $model.settings.walkers)
+                .disabled(model.settings.mafia)
+                .opacity(model.settings.mafia ? 0.45 : 1)
+            ToggleRow(title: L("Mafia mode"), caption: L("A man in a suit against dozens of gangsters."),
+                      isOn: $model.settings.mafia)
             ToggleRow(title: L("Open at login"),
                       isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
             ToggleRow(title: L("Check for updates"), caption: L("Once a day, on GitHub."),

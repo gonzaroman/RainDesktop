@@ -1,6 +1,27 @@
 import CoreGraphics
 import Foundation
 
+/// Por dónde pueden andar los personajes: el borde superior de las ventanas que se ven.
+enum Terrain {
+    /// Ventana en cuyo borde superior se posa algo que baja de `p` a `q`, si no la tapa otra de delante.
+    /// `windows` va de delante a atrás.
+    static func landing(on windows: [Obstacle], from p: CGPoint, to q: CGPoint) -> (UInt32, CGRect)? {
+        for (i, w) in windows.enumerated() {
+            let f = w.frame
+            guard let s = Surface.top(of: f, at: q.x), q.y < s.y,
+                  p.y >= (Surface.top(of: f, at: p.x)?.y ?? s.y) - 0.5 else { continue }
+            if isCovered(CGPoint(x: q.x, y: s.y + 1), in: windows, before: i) { continue }
+            return (w.id, f)
+        }
+        return nil
+    }
+
+    /// Si alguna de las `before` primeras ventanas tapa el punto.
+    static func isCovered(_ point: CGPoint, in windows: [Obstacle], before index: Int) -> Bool {
+        windows[..<index].contains { $0.frame.contains(point) }
+    }
+}
+
 /// Personajes que acompañan a la lluvia, sin nada de dibujo:
 /// - monigotes con paraguas que bajan del cielo, caminan por el borde superior de las ventanas,
 ///   se caen por las esquinas y bajan flotando hasta otra ventana, el fondo o el agua;
@@ -120,7 +141,8 @@ final class Creatures {
                 w.vy += (-Self.terminalSpeed - w.vy) * min(1, dt * 2.5)
                 w.x += w.vx * dt
                 w.y += w.vy * dt
-                if let (id, f) = landing(sim, from: CGPoint(x: px, y: py), to: CGPoint(x: w.x, y: w.y)) {
+                if let (id, f) = Terrain.landing(on: sim.windows, from: CGPoint(x: px, y: py),
+                                                 to: CGPoint(x: w.x, y: w.y)) {
                     w.state = .walking(window: id, offset: w.x - f.minX)
                     w.y = Surface.top(of: f, at: w.x)?.y ?? f.maxY
                     w.layer = id
@@ -172,20 +194,6 @@ final class Creatures {
             direction: Bool.random() ? 1 : -1, speed: .random(in: 22...30),
             phase: .random(in: 0...(2 * .pi)), turnIn: .random(in: 6...14)
         ))
-    }
-
-    /// Ventana en cuyo borde superior se posa al bajar de `p` a `q`, si no la tapa otra de delante.
-    private func landing(_ sim: RainSimulation, from p: CGPoint, to q: CGPoint) -> (UInt32, CGRect)? {
-        let windows = sim.windows
-        for (i, w) in windows.enumerated() {
-            let f = w.frame
-            guard let s = Surface.top(of: f, at: q.x), q.y < s.y,
-                  p.y >= (Surface.top(of: f, at: p.x)?.y ?? s.y) - 0.5 else { continue }
-            let point = CGPoint(x: q.x, y: s.y + 1)
-            if windows[..<i].contains(where: { $0.frame.contains(point) }) { continue }
-            return (w.id, f)
-        }
-        return nil
     }
 
     // MARK: - Peces

@@ -9,6 +9,8 @@ import QuartzCore
 final class RainView: NSView {
     private let sim = RainSimulation()
     private let creatures = Creatures()
+    private let mafia = MafiaFight()
+    private var brush = FigureBrush()
     private let renderer = RainRenderer()
     private var link: CADisplayLink?
     private var lastTimestamp: CFTimeInterval = 0
@@ -87,7 +89,9 @@ final class RainView: NSView {
         sim.sideCollide = settings.collide && settings.sideCollide
         sim.lightning = lightning
         streamWidth = CGFloat(settings.streamWidth)
-        creatures.walkersEnabled = settings.walkers
+        // En el modo Mafia, los paseantes dejan sitio a la pelea.
+        creatures.walkersEnabled = settings.walkers && !settings.mafia
+        mafia.enabled = settings.mafia
         creatures.fishEnabled = settings.fish
     }
 
@@ -127,6 +131,7 @@ final class RainView: NSView {
         updateFloodLayering()
         sim.step(dt: CGFloat(dt))
         creatures.step(dt: CGFloat(dt), sim: sim, ceiling: bounds.height - menuBarHeight)
+        mafia.step(dt: CGFloat(dt), sim: sim, ceiling: bounds.height - menuBarHeight)
         if sim.didStrike { onLightning?() }
 
         // Con una ventana a pantalla completa no hay nada que ver: se limpia una vez y se deja de pintar.
@@ -289,15 +294,14 @@ final class RainView: NSView {
 
         // Antes que el agua, para que tape a los monigotes que se hunden.
         addWalkers()
+        addFight()
         addWater()
     }
 
     private func addWater() {
         let level = sim.waterLevel
         guard level > 0.5 else { return }
-        // Olas más altas cuanto más llueve; casi planas al empezar a subir.
-        let amplitude = min(level * 0.5, 3 + 5 * sim.intensity)
-        add(.water, CGPoint(x: level, y: sim.time), CGPoint(x: 0, y: amplitude), width: 0, alpha: 1, depth: 0)
+        add(.water, CGPoint(x: level, y: sim.time), CGPoint(x: 0, y: sim.waveAmplitude), width: 0, alpha: 1, depth: 0)
 
         // Burbujas: aro transparente con un brillo arriba a la izquierda.
         for b in sim.bubbles {
@@ -310,67 +314,61 @@ final class RainView: NSView {
         addFish()
     }
 
-    /// Monigote con paraguas: pies en (x, y), unos 30 pt de alto.
-    private func addWalkers() {
-        let background = UInt32(shapes.count)
-        for w in creatures.walkers {
-            let k: UInt32
-            let walking: Bool
-            if case .walking(let id, _) = w.state {
-                k = depthOf[id].map(UInt32.init) ?? background
-                walking = true
-            } else {
-                // Al caer se queda en la capa de la ventana de la que viene, delante de ella.
-                k = w.layer.flatMap { depthOf[$0] }.map(UInt32.init) ?? background
-                walking = false
-            }
-            let alpha = 0.5 * w.alpha
-            let x = w.x, y = w.y
-            let d = w.direction
+    // MARK: - Personajes
 
-            // Piernas: andando se balancean; colgando, casi juntas.
-            let swing = walking ? sin(w.phase) * 3.5 : sin(sim.time * 3 + w.phase) * 1.2
-            let hip = CGPoint(x: x, y: y + 9)
-            add(.segment, hip, CGPoint(x: x + swing, y: y), width: 1.4, alpha: alpha, depth: k)
-            add(.segment, hip, CGPoint(x: x - swing, y: walking ? y : y + 0.8), width: 1.4, alpha: alpha, depth: k)
-            // Tronco, cabeza y el brazo que sujeta el paraguas.
-            add(.segment, hip, CGPoint(x: x, y: y + 17), width: 1.7, alpha: alpha, depth: k)
-            add(.ellipse, CGPoint(x: x, y: y + 20.5), CGPoint(x: 2.7, y: 2.7), width: 0, alpha: alpha, depth: k)
-            let hand = CGPoint(x: x + d * 3.5, y: y + 15)
-            add(.segment, CGPoint(x: x, y: y + 16), hand, width: 1.2, alpha: alpha, depth: k)
-
-            // Paraguas: se inclina con el viento; al caer, más abierto y con el mango hacia el movimiento.
-            let tilt = walking ? sim.wind * 4 : max(-6, min(6, -w.vx * 0.08))
-            let top = CGPoint(x: hand.x + tilt, y: y + 30)
-            let radii = walking ? CGPoint(x: 12, y: 7) : CGPoint(x: 13.5, y: 8.5)
-            add(.segment, CGPoint(x: hand.x, y: hand.y - 1.5), top, width: 0.9, alpha: alpha, depth: k)
-            add(.dome, top, radii, width: 0, alpha: alpha * 0.85, depth: k)
-            add(.segment, CGPoint(x: top.x - radii.x, y: top.y), CGPoint(x: top.x + radii.x, y: top.y),
-                width: 1, alpha: alpha * 0.6, depth: k)
-            add(.segment, CGPoint(x: top.x, y: top.y + radii.y), CGPoint(x: top.x, y: top.y + radii.y + 2.5),
-                width: 1, alpha: alpha, depth: k)
+    private func depth(of layer: MafiaFight.Layer) -> UInt32 {
+        switch layer {
+        case .back: return UInt32(shapes.count)
+        case .window(let id): return depthOf[id].map(UInt32.init) ?? UInt32(shapes.count)
+        case .front: return 0
         }
     }
 
-    /// Peces: cuerpo, cola que se mueve, aleta y un brillo en el ojo. Se ven a través del agua.
+    /// Monigotes con paraguas: andando, en la capa de su ventana; cayendo, en la de la ventana de la que vienen.
+    private func addWalkers() {
+        for w in creatures.walkers {
+            var layer = MafiaFight.Layer.back
+            if case .walking(let id, _) = w.state {
+                layer = .window(id)
+            } else if let id = w.layer {
+                layer = .window(id)
+            }
+            brush.walker(w, wind: sim.wind, time: sim.time)
+            brush.flush(into: &instances, alpha: 0.9 * w.alpha, depth: depth(of: layer))
+        }
+    }
+
+    /// Peces: se pintan después del agua para que se vean dentro.
     private func addFish() {
         for f in creatures.fish {
-            let s: CGFloat = f.vx >= 0 ? 1 : -1
-            // Al darse la vuelta el cuerpo se ve de frente y se estrecha.
-            let turn = max(0.35, min(1, abs(f.vx) / f.speed))
-            let len = f.size * turn
-            let alpha = 0.42 * f.alpha
-            add(.ellipse, CGPoint(x: f.x, y: f.y), CGPoint(x: len, y: f.size * 0.42), width: 0, alpha: alpha, depth: 0)
-            let wag = sin(sim.time * 8 + f.phase) * f.size * 0.18
-            let base = CGPoint(x: f.x - s * len * 0.85, y: f.y)
-            for side: CGFloat in [1, -1] {
-                add(.segment, base, CGPoint(x: f.x - s * len * 1.55, y: f.y + side * f.size * 0.42 + wag),
-                    width: f.size * 0.22, alpha: alpha, depth: 0)
+            brush.fish(f, time: sim.time)
+            brush.flush(into: &instances, alpha: 0.8 * f.alpha, depth: 0)
+        }
+    }
+
+    /// Modo Mafia. Las lanchas y su tripulación van antes que el agua, que les cubre la parte hundida.
+    private func addFight() {
+        guard mafia.enabled else { return }
+        for c in mafia.casings {
+            brush.casing(c)
+            brush.flush(into: &instances, alpha: min(1, (2.5 - c.age) / 0.5), depth: depth(of: c.layer))
+        }
+        for f in mafia.fighters {
+            if case .boat? = f.ground { continue }
+            brush.fighter(f, time: sim.time)
+            brush.flush(into: &instances, alpha: 0.95 * f.alpha, depth: depth(of: f.layer))
+        }
+        for b in mafia.bullets {
+            brush.bullet(b)
+            brush.flush(into: &instances, alpha: 1, depth: depth(of: b.layer))
+        }
+        for b in mafia.boats {
+            for f in mafia.fighters where f.ground == .boat(b.id) {
+                brush.fighter(f, time: sim.time)
+                brush.flush(into: &instances, alpha: 0.95 * f.alpha * b.alpha, depth: 0)
             }
-            add(.segment, CGPoint(x: f.x - s * len * 0.1, y: f.y + f.size * 0.36),
-                CGPoint(x: f.x - s * len * 0.5, y: f.y + f.size * 0.62), width: f.size * 0.16, alpha: alpha, depth: 0)
-            add(.ellipse, CGPoint(x: f.x + s * len * 0.55, y: f.y + f.size * 0.1),
-                CGPoint(x: f.size * 0.09, y: f.size * 0.09), width: 0, alpha: 0.85 * f.alpha, depth: 0)
+            brush.boat(b, deck: mafia.deck(of: b))
+            brush.flush(into: &instances, alpha: 0.95 * b.alpha, depth: 0)
         }
     }
 
